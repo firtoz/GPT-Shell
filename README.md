@@ -2,6 +2,9 @@
 
 GPT-Shell is an OpenAI based chat-bot that is similar to OpenAI's ChatGPT (https://chat.openai.com/). It allows users to converse with a virtual companion. It uses nodejs and typescript, as well as modern yarn, to create a seamless conversation experience.
 
+https://user-images.githubusercontent.com/108406948/207628213-c8bebc1b-ce72-45ba-907f-e0d6f51c27cd.mp4
+
+
 ## Try it out
 
 You can try the bot on the official TalkGPT Discord server:
