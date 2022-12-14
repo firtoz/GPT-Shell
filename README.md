@@ -7,7 +7,7 @@ https://user-images.githubusercontent.com/108406948/207628213-c8bebc1b-ce72-45ba
 
 ## Try it out
 
-You can try the bot on the official TalkGPT Discord server:
+You can try the bot on the official Discord server:
 
 [![](https://dcbadge.vercel.app/api/server/TruuVEBmcC)](https://discord.gg/TruuVEBmcC)
 
