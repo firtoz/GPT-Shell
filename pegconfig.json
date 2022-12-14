@@ -1,0 +1,9 @@
+{
+  "tspegjs": {
+    "customHeader": "import {USDA_File} from \"./USDA_File\";"
+  },
+  "returnTypes": {
+    "FILE": "USDA_File",
+    "": "USDA_File"
+  }
+}

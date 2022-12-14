@@ -1,0 +1,47 @@
+{
+  "name": "please-edit-this-name",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "nodemon ./src/index.ts",
+    "build": "yarn tsc && echo build complete",
+    "start": "yarn node ./lib/index.js",
+    "start-replit": "yarn node --version ./lib/index.js",
+    "test": "vitest run",
+    "vitest": "vitest"
+  },
+  "keywords": [
+    "typescript"
+  ],
+  "files": [
+    "lib/*",
+    "src/*"
+  ],
+  "types": "lib/index.d.ts",
+  "main": "lib/index.js",
+  "devDependencies": {
+    "@types/pnpapi": "^0",
+    "@types/uuid": "^9",
+    "cross-env": "^7.0.3",
+    "nodemon": "^2.0.20",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "ts-pegjs": "^2.1.0",
+    "typescript": "4.9.3",
+    "vite": "^4.0.0",
+    "vitest": "^0.25.7"
+  },
+  "packageManager": "yarn@3.3.0",
+  "dependencies": {
+    "axios": "1.1.3",
+    "discord-interactions": "^3.2.0",
+    "discord.js": "^14.7.1",
+    "dotenv": "^16.0.3",
+    "gpt-3-encoder": "^1.1.3",
+    "mongodb": "^4.12.1",
+    "openai": "^3.1.0",
+    "pnpapi": "^0.0.0",
+    "tsc": "^2.0.4",
+    "uuid": "^9.0.0"
+  }
+}

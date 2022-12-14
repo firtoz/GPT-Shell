@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "module": "commonjs",
+    "target": "ESNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "lib",
+    "declaration": true,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "paths": {
+      "@kroxilon/usda-parser": [
+        "./src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

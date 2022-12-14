@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="cache">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/.yarn/cache/commander-npm-9.4.1-9deffb2749-bfb18e325a.zip!/" />
+      <root url="jar://$PROJECT_DIR$/.yarn/cache/peggy-npm-2.0.1-24fd2f97e1-0ce0ee8f9f.zip!/" />
+      <root url="jar://$PROJECT_DIR$/.yarn/cache/source-map-generator-npm-0.8.0-494520805d-15e7854c04.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
