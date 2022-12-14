@@ -85,7 +85,7 @@ MAIN_SERVER_INVITE=
 
 ## Contributions
 
-We welcome contributions to GPT-Shell. If you have an idea for a new feature or have found a bug, please open an issue on GitHub.
+We welcome contributions to GPT-Shell. If you have an idea for a new feature or have found a bug, please open an issue on GitHub. We would also appreciate any sponsorships or donations. You can sponsor us through our GitHub sponsor page [here](https://github.com/sponsors/firtoz).
 
 ## License
 

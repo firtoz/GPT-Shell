@@ -17,6 +17,7 @@ import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
 import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
 import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
+import {trySendingMessage} from "../../core/TrySendingMessage";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -105,7 +106,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
             inputValue
         );
     } else {
-        thread.send({content: `[[<@${userId}>, ${client.user!.username} will respond to your messages in this thread.]]`});
+        await trySendingMessage(thread, {content: `[[<@${userId}>, ${client.user!.username} will respond to your messages in this thread.]]`}, undefined);
     }
 }
 

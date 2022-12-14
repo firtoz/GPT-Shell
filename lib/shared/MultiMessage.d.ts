@@ -9,4 +9,5 @@ export declare class MultiMessage {
     }[];
     constructor(channel: TextBasedChannel, firstMessage?: Message<boolean>, messageToReplyTo?: Message<boolean> | undefined);
     update(message: string, finished: boolean, error?: boolean): Promise<void>;
+    private updateMessages;
 }

@@ -13,6 +13,7 @@ import {ModelInfo, ModelName} from "./ModelInfo";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
 import {getOpenAIKeyForId, OpenAICache} from "./GetOpenAIKeyForId";
+import {trySendingMessage} from "./TrySendingMessage";
 
 const cache: Record<string, ChatGPTConversation | undefined | null> = {};
 
@@ -247,13 +248,13 @@ ${this.username}:`;
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
         let openai: OpenAIApi | undefined;
-        
-        if(this.isDirectMessage) {
+
+        if (this.isDirectMessage) {
             openai = await getOpenAIKeyForId(user.id);
         } else {
             openai = await getOpenAIKeyForId(this.guildId);
 
-            if(!openai) {
+            if (!openai) {
                 // fallback to user's key...
                 openai = await getOpenAIKeyForId(user.id);
             }
@@ -267,11 +268,7 @@ ${this.username}:`;
                 response.content += '\n' + MAIN_SERVER_INVITE;
             }
 
-            if (messageToReplyTo != null) {
-                await messageToReplyTo.reply(response);
-            } else {
-                await channel.send(response);
-            }
+            await trySendingMessage(channel, response, messageToReplyTo);
 
             return;
         }
@@ -284,11 +281,7 @@ ${this.username}:`;
 ${JSON.stringify(debugInfo, null, '  ')}
 \`\`\``;
 
-            if (messageToReplyTo != null) {
-                await messageToReplyTo.reply(debugMessage);
-            } else {
-                await channel.send(debugMessage);
-            }
+            await trySendingMessage(channel, {content: debugMessage}, messageToReplyTo);
 
             return;
         }
@@ -297,7 +290,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
         const multi = new MultiMessage(channel, undefined, messageToReplyTo);
 
-        if(messageToReplyTo) {
+        if (messageToReplyTo) {
             this.lastDiscordMessageId = messageToReplyTo.id
         }
 

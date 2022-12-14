@@ -1,5 +1,6 @@
 import {AnyThreadChannel, DMChannel, EmbedBuilder, Message, TextBasedChannel, TextChannel} from "discord.js";
 import {divideTextToSections} from "./DivideTextToSections";
+import {logMessage} from "../utils/logMessage";
 
 // The maximum length of a message
 const MAX_MESSAGE_LENGTH = 1900;
@@ -54,7 +55,15 @@ export class MultiMessage {
         // Divide the message into sections that are no longer than MAX_MESSAGE_LENGTH
         const sections = divideTextToSections(message, MAX_MESSAGE_LENGTH);
 
-        // Iterate over the sections and update the corresponding messages
+        try {
+            // Iterate over the sections and update the corresponding messages
+            await this.updateMessages(sections, embeds);
+        } catch (e) {
+            logMessage(`Cannot send a message: [${this.channel.isDMBased() ? 'DM' : this.channel.guild?.name ?? this.channel.guildId}] <#${this.channel.id}>`)
+        }
+    }
+
+    private async updateMessages(sections: string[], embeds: EmbedBuilder[]) {
         for (let i = 0; i < sections.length; ++i) {
             const section = sections[i];
 

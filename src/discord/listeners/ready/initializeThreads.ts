@@ -4,6 +4,7 @@ import {logMessage} from "../../../utils/logMessage";
 import {getWhimsicalResponse} from "./getWhimsicalResponse";
 import {tryGetThread} from "./tryGetThread";
 import {messageReceivedInThread} from "./message-handling/handleThread";
+import {trySendingMessage} from "../../../core/TrySendingMessage";
 
 export function InitializeThreads(client: Client<boolean>) {
     const currentBotId = client.user!.id;
@@ -61,9 +62,12 @@ export function InitializeThreads(client: Client<boolean>) {
 
             let lastMessage: Message<false> = newMessages[newMessages.length - 1];
 
-            channel.send(`[[${getWhimsicalResponse(user.id)}
+            await trySendingMessage(channel, {
+                content: `[[${getWhimsicalResponse(user.id)}
 
-I will respond to this message now.]]`);
+I will respond to this message now.]]`
+            });
+
             info.handlePrompt(lastMessage.author, channel, lastMessage.content, lastMessage)
                 .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
 
@@ -87,7 +91,7 @@ I will respond to this message now.]]`);
         const server = client.guilds.cache.get(info.guildId);
 
         if (server == null) {
-            logMessage('INITIALIZEThreads', 'server null for info', info);
+            logMessage('INITIALIZEThreads', 'server null for info', info.guildId);
             return;
         }
 
@@ -162,9 +166,11 @@ I will respond to this message now.]]`);
                 logMessage(`Found message for thread: <#${info.threadId}>`, lastRelevantMessage.content);
 
                 if (!messageReceivedInThread[info.threadId]) {
-                    thread.send(`[[${getWhimsicalResponse(lastRelevantMessage.author.id)}
+                    await trySendingMessage(thread, {
+                        content: `[[${getWhimsicalResponse(lastRelevantMessage.author.id)}
 
-I will respond to this message now.]]`);
+I will respond to this message now.]]`
+                    });
                     info.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
                         .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
                 } else {
@@ -188,9 +194,11 @@ I will respond to this message now.]]`);
             logMessage(`Found message for thread: <#${info.threadId}>`, lastRelevantMessage.content);
 
             if (!messageReceivedInThread[info.threadId]) {
-                thread.send(`[[${getWhimsicalResponse(info.creatorId)}
+                await trySendingMessage(thread, {
+                    content: `[[${getWhimsicalResponse(info.creatorId)}
 
-I will respond to your last prompt now.]]`);
+I will respond to your last prompt now.]]`,
+                });
                 info.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
                     .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
             } else {
