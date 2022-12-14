@@ -66,10 +66,6 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         content: firstMessage,
     });
 
-    if (!message.channel) {
-        await client.channels.fetch(message.channelId);
-    }
-
     const inputValue = inputOption?.value as string | undefined;
 
     const threadName = `${user.username} - ${value ?? getDateString(new Date())}`
