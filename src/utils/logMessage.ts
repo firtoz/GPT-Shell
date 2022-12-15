@@ -1,20 +1,32 @@
 import {discordClient} from "../discord/discordClient";
 import {db} from "../database/db";
-import {Channel} from "discord.js";
+import {
+    CategoryChannel,
+    Channel,
+    DMChannel, ForumChannel,
+    NewsChannel,
+    PartialDMChannel,
+    PartialGroupDMChannel, PrivateThreadChannel, PublicThreadChannel,
+    StageChannel, TextBasedChannel, TextChannel, VoiceChannel
+} from "discord.js";
 import {MultiMessage} from "../shared/MultiMessage";
 import {getEnv} from "./GetEnv";
 
-let logChannelPromise: Promise<Channel | null> | null = null;
+let logChannelPromise: Promise<TextBasedChannel | null> | null = null;
 
-function getLogChannel(): Promise<Channel | null> {
+function getLogChannel(): Promise<TextBasedChannel | null> {
     if (logChannelPromise === null) {
-        logChannelPromise = new Promise<Channel | null>(async resolve => {
+        logChannelPromise = new Promise<TextBasedChannel | null>(async resolve => {
             const logChannelId = getEnv('LOG_CHANNEL_ID') ?? await db.get<string>('LOG_CHANNEL_ID');
             console.log({logChannelId});
             if (logChannelId != null) {
                 try {
                     const channel = await discordClient.channels.fetch(logChannelId);
-                    resolve(channel);
+                    if (channel && channel.isTextBased()) {
+                        resolve(channel);
+                    } else {
+                        resolve(null);
+                    }
                 } catch (e) {
                     console.error(e);
                     resolve(null);
@@ -49,7 +61,6 @@ function stringify(obj: any) {
     }, '  ');
 }
 
-export let messagePromise: Promise<any> = Promise.resolve();
 
 function printArg(arg: any): string {
     switch (typeof arg) {
@@ -69,37 +80,47 @@ ${stringify(arg)}
     }
 }
 
+const messageQueue: string[] = [];
+
+export let messagePromise: Promise<any> | null = null;
+
+async function clearMessageQueue(logChannel: TextBasedChannel) {
+    while (messageQueue.length > 0) {
+        const nextMessages = messageQueue.splice(0, messageQueue.length);
+
+        await new MultiMessage(logChannel).update(nextMessages.join('\n'), true);
+    }
+
+    messagePromise = null;
+}
+
 export async function logMessage(...args: any[]): Promise<void> {
     console.error(...args);
 
-    return new Promise((resolve) => {
-        messagePromise.finally(() => {
-            messagePromise = (async () => {
-                try {
-                    const logChannel = await getLogChannel();
+    const logChannel = await getLogChannel();
 
-                    if (logChannel !== null) {
-                        if (logChannel.isTextBased()) {
-                            try {
-                                await new MultiMessage(logChannel)
-                                    .update(args.map(arg => {
-                                        const printed = printArg(arg);
+    if (!logChannel) {
+        return;
+    }
 
-                                        if (printed.length > 5000) {
-                                            return printed.slice(0, 5000) + '...';
-                                        }
+    const messageToPrint = args.map(arg => {
+        const printed = printArg(arg);
 
-                                        return printed;
-                                    }).join('\n'), true)
-                            } catch (e) {
-                                console.error('Cannot write to log channel:', e);
-                            }
-                        }
-                    }
-                } finally {
-                    resolve();
-                }
-            })();
-        })
-    });
+        if (printed.length > 5000) {
+            return printed.slice(0, 5000) + '...';
+        }
+
+        return printed;
+    }).join('\n');
+
+    messageQueue.push(`[${new Date().toLocaleString('default', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    })}] ${messageToPrint}`);
+
+    if (!messagePromise) {
+        messagePromise = clearMessageQueue(logChannel);
+    }
 }

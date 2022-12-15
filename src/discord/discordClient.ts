@@ -9,3 +9,17 @@ export const discordClient = new Client({
     ],
     'partials': [Partials.Channel]
 });
+
+export const getGuildName = async (guildId: string | null) => {
+    if (!guildId) {
+        return `[UNKNOWN GUILD]`;
+    }
+
+    try {
+        const guild = await discordClient.guilds.fetch(guildId);
+
+        return guild.name;
+    } catch (e) {
+        return '[UNKNOWN GUILD]';
+    }
+}

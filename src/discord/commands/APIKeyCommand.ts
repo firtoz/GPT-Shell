@@ -10,6 +10,7 @@ import {Configuration, OpenAIApi} from "openai";
 import {logMessage} from "../../utils/logMessage";
 import {AxiosError} from "axios";
 import {db} from "../../database/db";
+import {getGuildName} from "../discordClient";
 
 const API_KEY_COMMAND_NAME = getEnv('API_KEY_COMMAND_NAME');
 
@@ -26,7 +27,15 @@ const options: ApplicationCommandOptionData[] = [
 async function handleToken(interaction: CommandInteraction, isDM: boolean) {
     const token = interaction.options.get('token');
 
+    const idToUse = isDM ? interaction.user.id : interaction.guildId;
+
+    logMessage(`Token supplied for [${isDM ? `User:${interaction.user.username}`: 
+        `Server:${await getGuildName(interaction.guildId)}`}]`);
+
     if (token == null) {
+        logMessage(`INVALID token supplied for [${isDM ? `User:${interaction.user.username}`:
+            `Server:${await getGuildName(interaction.guildId)}`}]`);
+
         await interaction.followUp({
             content: 'Invalid token parameter.',
         });
@@ -47,12 +56,10 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
         if (data != null) {
             // Token is good!
 
-            if(isDM) {
-                await db.set(`CONFIG-API-KEY-${interaction.user.id}`, tokenValue);
-            } else {
-                await db.set(`CONFIG-API-KEY-${interaction.guildId}`, tokenValue);
-            }
+            logMessage(`GOOD token supplied for [${isDM ? `User:${interaction.user.username}`:
+                `Server:${await getGuildName(interaction.guildId)}`}]`);
 
+            await db.set(`CONFIG-API-KEY-${idToUse}`, tokenValue);
 
             await interaction.followUp({
                 content: 'Token Accepted.',
@@ -64,6 +71,9 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
         logMessage({tokenValue, status: err.status, data: err.response?.data})
 
         const data = err.response?.data as any;
+
+        logMessage(`BAD token supplied for [${isDM ? `User:${interaction.user.username}`:
+            `Server:${await getGuildName(interaction.guildId)}`}]`);
 
         if (data != null) {
             const message = data?.error?.message;

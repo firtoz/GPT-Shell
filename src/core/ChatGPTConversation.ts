@@ -14,6 +14,7 @@ import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
 import {getOpenAIKeyForId, OpenAICache} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
+import {discordClient, getGuildName} from "../discord/discordClient";
 
 const cache: Record<string, ChatGPTConversation | undefined | null> = {};
 
@@ -133,8 +134,6 @@ ${this.username}:`;
 
         let finished = false;
         let result = '';
-
-        logMessage(`<#${this.threadId}> ${user.username}: ${message}`);
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
@@ -273,6 +272,8 @@ ${this.username}:`;
     ): Promise<void> {
         let openai: OpenAIApi | undefined;
 
+        logMessage(`New prompt by [${user.username}] in [${await this.getDebugName(user)}|<#${channel.id}>]: ${inputValue}`);
+
         if (this.isDirectMessage) {
             openai = await getOpenAIKeyForId(user.id);
         } else {
@@ -285,6 +286,8 @@ ${this.username}:`;
         }
 
         if (!openai) {
+            logMessage(`No api key for [${(await this.getDebugName(user))}].`);
+
             const response = await getMissingAPIKeyResponse(this.isDirectMessage);
 
             const MAIN_SERVER_INVITE = getEnv('MAIN_SERVER_INVITE');
@@ -331,6 +334,10 @@ ${JSON.stringify(debugInfo, null, '  ')}
                 }
             }
         );
+    }
+
+    private async getDebugName(user: User) {
+        return this.isDirectMessage ? user.username : await getGuildName(this.guildId);
     }
 
     static async initialise(callback: (info: ChatGPTConversation) => Promise<void>) {

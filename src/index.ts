@@ -5,10 +5,12 @@ import {getEnv} from "./utils/GetEnv";
 import {discordClient} from "./discord/discordClient";
 import * as process from "process";
 import {logMessage} from "./utils/logMessage";
+import serverJoin from "./discord/listeners/serverJoin";
 
 (async () => {
     ready(discordClient);
     interactionCreate(discordClient);
+    serverJoin(discordClient);
 
     const botToken = getEnv('BOT_TOKEN');
 
