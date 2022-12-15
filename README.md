@@ -33,6 +33,10 @@ To use GPT-Shell, you will need to:
 - Clone the project
 - Run `yarn install`
 
+You can also fork the replit:
+
+https://replit.com/@Ephemeros/GPT-Shell
+
 Set up the environment variables as described below.
 
 Then to start a development environment, run `yarn dev`. To build and run, run `yarn build` and then `yarn start`.
