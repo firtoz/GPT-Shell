@@ -36,6 +36,15 @@ OpenAICache[MAIN_SERVER_ID] = new OpenAIApi(new Configuration({
 }));
 
 
+type CompletionError = {
+    error?: {
+        message: string;
+        type: string;
+        param: string | null;
+        code: string | null;
+    }
+};
+
 export class ChatGPTConversation {
     lastUpdated: number = 0;
 
@@ -114,7 +123,7 @@ export class ChatGPTConversation {
         openai: OpenAIApi,
         user: User,
         message: string,
-        onProgress?: (result: string, finished: boolean) => void,
+        onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
         const newPromptText = `
 (${user.username}|${user.id}): ${message}${END_OF_PROMPT}
@@ -184,56 +193,71 @@ ${this.username}:`;
                 }
             }
 
-            if (response) {
-                if (response.status === 200) {
-                    const choices = response.data.choices;
-                    if (choices.length !== 1) {
-                        logMessage('Not enough choices?!');
+            if (!response) {
+                onProgress('[[Could not get a response from OpenAI :( Perhaps their servers are down?]]', true);
+                finished = true;
+                break;
+            }
 
-                        return null;
-                    }
+            if (response.status !== 200) {
+                const data = response.data as unknown as CompletionError;
 
-                    const choice = choices[0];
-
-                    const text = choice.text;
-
-                    newHistory += text;
-                    result += text;
-
-                    if (text == undefined) {
-                        logMessage('No text?!');
-                        return null;
-                    }
-
-                    if (choice.finish_reason === 'stop') {
-                        finished = true;
-
-                        newHistory += END_OF_TEXT;
-
-                        this.currentHistory = newHistory;
-
-                        logMessage(`<#${this.threadId}> response: ${result}`);
-
-                        this.allHistory += newPromptText + result + END_OF_TEXT;
-                        this.numPrompts++;
-
-                        await this.persist();
-
-                        if (onProgress) {
-                            onProgress(result, true);
-                        }
-
-                        return result;
-                    } else {
-                        if (onProgress) {
-                            onProgress(result, false);
-                        }
-
-                        finished = false;
-                    }
+                if (data.error?.type === 'insufficient_quota') {
+                    onProgress('[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.]]', true);
+                } else if (data.error?.message) {
+                    onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
                 } else {
-                    logMessage('Bad response', response.data);
+                    onProgress('[[Unknown error from OpenAI servers. Please ping the bot owner for help.]]', true);
+                }
+
+                logMessage('Bad response', response.data);
+                finished = true;
+                break;
+            } else {
+                const choices = response.data.choices;
+                if (choices.length !== 1) {
+                    logMessage('Not enough choices?!');
+
+                    return null;
+                }
+
+                const choice = choices[0];
+
+                const text = choice.text;
+
+                newHistory += text;
+                result += text;
+
+                if (text == undefined) {
+                    logMessage('No text?!');
+                    return null;
+                }
+
+                if (choice.finish_reason === 'stop') {
                     finished = true;
+
+                    newHistory += END_OF_TEXT;
+
+                    this.currentHistory = newHistory;
+
+                    logMessage(`<#${this.threadId}> response: ${result}`);
+
+                    this.allHistory += newPromptText + result + END_OF_TEXT;
+                    this.numPrompts++;
+
+                    await this.persist();
+
+                    if (onProgress) {
+                        onProgress(result, true);
+                    }
+
+                    return result;
+                } else {
+                    if (onProgress) {
+                        onProgress(result, false);
+                    }
+
+                    finished = false;
                 }
             }
         }
