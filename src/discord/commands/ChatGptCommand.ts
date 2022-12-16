@@ -56,9 +56,9 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
                     content: `${MAIN_SERVER_INVITE}`,
                 });
             }
-        }
 
-        return;
+            return;
+        }
     }
 
     const inputOption = interaction.options.get('input');
