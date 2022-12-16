@@ -13,6 +13,7 @@ import {
 } from "discord.js";
 import {discordClient} from "../discord/discordClient";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
+import {ModelName} from "./ModelInfo";
 
 const THREAD_PREFIX = `THREAD-`;
 
@@ -59,14 +60,14 @@ export abstract class BaseConversation {
 
         const fromDb = await db.get<BaseConversation>(ChatGPTConversation.getDBKey(threadId));
 
-        let result :BaseConversation | null = null;
+        let result: BaseConversation | null = null;
 
         if (fromDb != null) {
-            if((fromDb as ChatGPTConversation).version !== undefined) {
+            if ((fromDb as ChatGPTConversation).version !== undefined) {
                 result = await ChatGPTConversation.handleRetrievalFromDB(fromDb as ChatGPTConversation);
             }
 
-            result =await ChatGPTConversationVersion0.handleRetrievalFromDB(fromDb as ChatGPTConversationVersion0);
+            result = await ChatGPTConversationVersion0.handleRetrievalFromDB(fromDb as ChatGPTConversationVersion0);
         }
 
         cache[threadId] = result;
@@ -170,5 +171,15 @@ export abstract class BaseConversation {
         );
         info.lastDiscordMessageId = message.id;
         return info;
+    }
+
+    static create(
+        threadId: string,
+        creatorId: string,
+        guildId: string,
+        username: string,
+        model: ModelName,
+    ): BaseConversation {
+        return new ChatGPTConversation(threadId, creatorId, guildId, username, model);
     }
 }

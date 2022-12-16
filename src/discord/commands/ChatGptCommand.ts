@@ -17,7 +17,7 @@ import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
 import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
 import {trySendingMessage} from "../../core/TrySendingMessage";
-import {ChatGPTConversation} from "../../core/ChatGPTConversation";
+import {BaseConversation} from "../../core/BaseConversation";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -98,7 +98,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    const conversation = new ChatGPTConversation(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
+    const conversation = BaseConversation.create(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
 
     await conversation.persist();
 
