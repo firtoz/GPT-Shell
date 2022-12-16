@@ -11,6 +11,7 @@ import {logMessage} from "../../utils/logMessage";
 import {AxiosError} from "axios";
 import {db} from "../../database/db";
 import {getGuildName} from "../discordClient";
+import {OpenAICache} from "../../core/GetOpenAIKeyForId";
 
 const API_KEY_COMMAND_NAME = getEnv('API_KEY_COMMAND_NAME');
 
@@ -28,6 +29,12 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
     const token = interaction.options.get('token');
 
     const idToUse = isDM ? interaction.user.id : interaction.guildId;
+    if(idToUse == null) {
+        const message = `Could not identify ${isDM ? 'user': 'server'} id... Please message the bot owner!`;
+        logMessage(message);
+        await interaction.followUp(message);
+        return;
+    }
 
     logMessage(`Token supplied for [${isDM ? `User:${interaction.user.username}`: 
         `Server:${await getGuildName(interaction.guildId)}`}]`);
@@ -58,6 +65,8 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
 
             logMessage(`GOOD token supplied for [${isDM ? `User:${interaction.user.username}`:
                 `Server:${await getGuildName(interaction.guildId)}`}]`);
+
+            OpenAICache[idToUse] = api;
 
             await db.set(`CONFIG-API-KEY-${idToUse}`, tokenValue);
 
