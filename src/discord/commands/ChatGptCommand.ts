@@ -12,7 +12,7 @@ import {Command} from "../Command";
 import {getEnv} from "../../utils/GetEnv";
 import {ChatGPTConversation} from "../../core/ChatGPTConversation";
 import {logMessage} from "../../utils/logMessage";
-import {discordClient} from "../discordClient";
+import {discordClient, getGuildName} from "../discordClient";
 import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
 import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
@@ -39,14 +39,23 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    if (!await getOpenAIKeyForId(interaction.guildId)) {
-        await interaction.followUp(await getMissingAPIKeyResponse(false));
+    let openAI = await getOpenAIKeyForId(interaction.guildId);
+    if (!openAI) {
+        if (!openAI) {
+            // fallback to user's key...
+            openAI = await getOpenAIKeyForId(interaction.user.id);
+        }
+        if (!openAI) {
+            logMessage(`Could not find API key for server ${await getGuildName(interaction.guildId)}[${interaction.guildId}}] or user [[${interaction.user.username}|${interaction.user.id}]]`);
 
-        const MAIN_SERVER_INVITE = getEnv('MAIN_SERVER_INVITE');
-        if(MAIN_SERVER_INVITE) {
-            await interaction.followUp({
-                content: `${MAIN_SERVER_INVITE}`,
-            });
+            await interaction.followUp(await getMissingAPIKeyResponse(false));
+
+            const MAIN_SERVER_INVITE = getEnv('MAIN_SERVER_INVITE');
+            if (MAIN_SERVER_INVITE) {
+                await interaction.followUp({
+                    content: `${MAIN_SERVER_INVITE}`,
+                });
+            }
         }
 
         return;
