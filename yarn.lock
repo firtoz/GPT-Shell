@@ -1365,6 +1365,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"array-keyed-map@npm:^2.1.2":
+  version: 2.1.3
+  resolution: "array-keyed-map@npm:2.1.3"
+  checksum: 53b45671922bbe7a7eb34950887fd4b1ba4154b0e0002523efa8fb352b320aaa6f798e4d7af151fc8dd4f3365996974f40f141e201d9aae90ea8b3383daf98f8
+  languageName: node
+  linkType: hard
+
 "assertion-error@npm:^1.1.0":
   version: 1.1.0
   resolution: "assertion-error@npm:1.1.0"
@@ -2017,6 +2024,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gpt3-tokenizer@npm:^1.1.4":
+  version: 1.1.4
+  resolution: "gpt3-tokenizer@npm:1.1.4"
+  dependencies:
+    array-keyed-map: ^2.1.2
+  checksum: 4606dc27d81ceee907d239a90f6ef8d9735a2a57d7316c1f01d0e2cea72d9c520b0b4ae68eb31be3d2f6b6aa333e8581483b97559ee4ef2a9b7e787077b78eec
+  languageName: node
+  linkType: hard
+
 "graceful-fs@npm:^4.2.6":
   version: 4.2.10
   resolution: "graceful-fs@npm:4.2.10"
@@ -2646,6 +2662,7 @@ __metadata:
     discord.js: ^14.7.1
     dotenv: ^16.0.3
     gpt-3-encoder: ^1.1.3
+    gpt3-tokenizer: ^1.1.4
     mongodb: ^4.12.1
     nodemon: ^2.0.20
     openai: ^3.1.0

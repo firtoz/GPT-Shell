@@ -36,6 +36,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt-3-encoder", "npm:1.1.3"],\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
@@ -1594,6 +1595,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["array-keyed-map", [\
+        ["npm:2.1.3", {\
+          "packageLocation": "./.yarn/cache/array-keyed-map-npm-2.1.3-c96c9dd286-53b4567192.zip/node_modules/array-keyed-map/",\
+          "packageDependencies": [\
+            ["array-keyed-map", "npm:2.1.3"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["assertion-error", [\
         ["npm:1.1.0", {\
           "packageLocation": "./.yarn/cache/assertion-error-npm-1.1.0-66b893015e-fd9429d3a3.zip/node_modules/assertion-error/",\
@@ -2290,6 +2300,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/gpt-3-encoder-npm-1.1.3-0457477e1b-98efa67a8f.zip/node_modules/gpt-3-encoder/",\
           "packageDependencies": [\
             ["gpt-3-encoder", "npm:1.1.3"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["gpt3-tokenizer", [\
+        ["npm:1.1.4", {\
+          "packageLocation": "./.yarn/cache/gpt3-tokenizer-npm-1.1.4-bdac17ac1f-4606dc27d8.zip/node_modules/gpt3-tokenizer/",\
+          "packageDependencies": [\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
+            ["array-keyed-map", "npm:2.1.3"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -3002,6 +3022,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt-3-encoder", "npm:1.1.3"],\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\

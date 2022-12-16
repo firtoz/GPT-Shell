@@ -1,10 +1,11 @@
 import {DMChannel, Message} from "discord.js";
-import {BaseConversation} from "../../../../core/BaseConversation";
+import {retrieveConversation} from "../../../../core/RetrieveConversation";
+import {ConversationFactory} from "../../../../core/ConversationFactory";
 
 export async function handleDirectMessage(channelId: string, message: Message<boolean>, currentBotId: string, channel: DMChannel) {
-    let info = await BaseConversation.retrieve(channelId);
+    let info = await retrieveConversation(channelId);
 
-    info = await BaseConversation.handleMessageAndReturnInfo(info, channelId, message, channel);
+    info = await ConversationFactory.handleMessageAndReturnInfo(info, channelId, message, channel);
 
     info.isDirectMessage = true;
     info.lastDiscordMessageId = message.id;

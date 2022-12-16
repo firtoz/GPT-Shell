@@ -4,45 +4,22 @@ import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js
 import {logMessage} from "../utils/logMessage";
 
 // @ts-ignore
-import {encode} from 'gpt-3-encoder';
-import {Configuration, CreateCompletionResponse, OpenAIApi} from 'openai';
+import {CreateCompletionResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelInfo, ModelName} from "./ModelInfo";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
-import {getOpenAIKeyForId, OpenAICache} from "./GetOpenAIKeyForId";
+import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {discordClient, getGuildName} from "../discord/discordClient";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {BaseConversation} from "./BaseConversation";
+import {CompletionError} from "./CompletionError";
+import {encodeLength} from "./EncodeLength";
 
-const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
-const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
-
-if (!OPENAI_API_KEY) {
-    throw new Error('Need OPENAI_API_KEY env variable.');
-}
-if (!MAIN_SERVER_ID) {
-    throw new Error('Need MAIN_SERVER_ID env variable.');
-}
-
-
-OpenAICache[MAIN_SERVER_ID] = new OpenAIApi(new Configuration({
-    apiKey: OPENAI_API_KEY,
-}));
-
-
-type CompletionError = {
-    error?: {
-        message: string;
-        type: string;
-        param: string | null;
-        code: string | null;
-    }
-};
 
 export class ChatGPTConversationVersion0 extends BaseConversation {
     lastUpdated: number = 0;
@@ -58,12 +35,12 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
 
     constructor(
         threadId: string,
-        public creatorId: string,
-        public guildId: string,
+        creatorId: string,
+        guildId: string,
         private username: string,
         private model: ModelName,
     ) {
-        super(threadId);
+        super(threadId, creatorId, guildId);
 
         this.currentHistory = getOriginalPrompt(this.username);
         this.allHistory = this.currentHistory;
@@ -106,7 +83,7 @@ ${this.username}:`;
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
 
-            let newHistoryTokens = encode(newHistory).length;
+            let newHistoryTokens = encodeLength(newHistory);
             const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
             if (newHistoryTokens > maxallowedtokens) {
                 const allPrompts = newHistory.split(END_OF_PROMPT);
@@ -123,7 +100,7 @@ ${this.username}:`;
                 })
 
                 while (numPromptsToRemove < userPrompts.length) {
-                    totalTokens += encode(userPrompts[numPromptsToRemove]).length;
+                    totalTokens += encodeLength(userPrompts[numPromptsToRemove]);
                     numPromptsToRemove++;
 
                     if (totalTokens > tokensToRemove) {
@@ -141,7 +118,19 @@ ${this.username}:`;
 
 
             try {
-                const maxTokens = ModelInfo[this.model].MAX_TOKENS_PER_MESSAGE;
+                const maxTokens = ModelInfo[this.model].MAX_TOKENS_PER_RESPONSE;
+
+                // const embedding = await openai.createEmbedding({
+                //     model: 'embedding-ada-002',
+                //     user: user.id,
+                //     input: newPromptText,
+                // });
+
+
+
+                // https://www.npmjs.com/package/compute-cosine-similarity
+
+                // embedding.config.
 
                 response = await openai.createCompletion({
                     model: this.model,

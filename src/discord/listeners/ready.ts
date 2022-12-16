@@ -4,6 +4,9 @@ import {StartListeningToMessages} from "./ready/message-handling/startListeningT
 import {InitializeThreads} from "./ready/initializeThreads";
 import {logMessage} from "../../utils/logMessage";
 import {db} from "../../database/db";
+import {getEnv} from "../../utils/GetEnv";
+
+const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
 
 export default (client: Client): void => {
     client.on(Events.ClientReady, async () => {
@@ -29,6 +32,6 @@ export default (client: Client): void => {
         logMessage(`Currently in ${guilds.size} guild${guilds.size !== 1 ? 's' : ''}.`);
 
         StartListeningToMessages(client);
-        InitializeThreads(client);
+        InitializeThreads();
     });
 };

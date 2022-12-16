@@ -3,21 +3,20 @@ import {MultiMessage} from "../shared/MultiMessage";
 import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
-// @ts-ignore
-import {encode} from 'gpt-3-encoder';
-import {Configuration, CreateCompletionResponse, OpenAIApi} from 'openai';
+import {CreateCompletionResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelInfo, ModelName} from "./ModelInfo";
-import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
 import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {discordClient, getGuildName} from "../discord/discordClient";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {BaseConversation} from "./BaseConversation";
-
+import {getOriginalPrompt} from "./GetOriginalPrompt";
+import {CompletionError} from "./CompletionError";
+import {encodeLength} from "./EncodeLength";
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -30,34 +29,104 @@ if (!MAIN_SERVER_ID) {
 }
 
 
-type CompletionError = {
-    error?: {
-        message: string;
-        type: string;
-        param: string | null;
-        code: string | null;
-    }
+type MessageHistoryItem = ({
+    type: 'human';
+    userId: string;
+} | {
+    type: 'response';
+}) & {
+    timestamp: number;
+    username: string;
+    content: string;
+    numTokens: number;
+    embedding: number[];
 };
+
+export const messageToPromptPart = (item: MessageHistoryItem): string => {
+    if (item.type === "human") {
+        return `(${item.userId}|${item.username}):${item.content}`;
+    }
+
+    return `${item.username}:${item.content}`;
+}
+
+export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryItem> & Pick<MessageHistoryItem, 'numTokens'>)>(
+    messageHistory: T[],
+    maxTokens: number,
+): T[] => {
+    let sum = 0;
+
+    if (messageHistory.length < 1) {
+        return messageHistory;
+    }
+
+    let i = messageHistory.length - 1;
+    if (messageHistory[i].numTokens > maxTokens) {
+        return [];
+    }
+
+    while (i >= 0) {
+        let current = messageHistory[i];
+        if (sum + current.numTokens <= maxTokens) {
+            sum += current.numTokens;
+        } else {
+            break;
+        }
+        i--;
+    }
+
+    return messageHistory.slice(i + 1);
+}
+
+function createHumanMessage(user: User, message: string) {
+    const newMessageItem: MessageHistoryItem = {
+        content: message,
+        embedding: [],
+        numTokens: 0,
+        type: 'human',
+        username: user.username,
+        userId: user.id,
+        timestamp: new Date().getTime(),
+    };
+
+    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+    return newMessageItem;
+}
+
+function createResponseMessage(username: string, message: string) {
+    const newMessageItem: MessageHistoryItem = {
+        content: message,
+        embedding: [],
+        numTokens: 0,
+        type: 'response',
+        username: username,
+        timestamp: new Date().getTime(),
+    };
+
+    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+    return newMessageItem;
+}
+
 
 export class ChatGPTConversation extends BaseConversation {
 
-
     deleted: boolean = false;
     numPrompts = 0;
+
+    messageHistory: MessageHistoryItem[] = [];
 
     public version = 2;
 
     constructor(
         threadId: string,
-        public creatorId: string,
-        public guildId: string,
+        creatorId: string,
+        guildId: string,
         private username: string,
         private model: ModelName,
     ) {
-        super(threadId);
-
-        // this.currentHistory = getOriginalPrompt(this.username);
-        // this.allHistory = this.currentHistory;
+        super(threadId, creatorId, guildId);
     }
 
 
@@ -81,68 +150,35 @@ export class ChatGPTConversation extends BaseConversation {
         message: string,
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
-        const newPromptText = `
-(${user.username}|${user.id}): ${message}${END_OF_PROMPT}
-${this.username}:`;
+        const initialPrompt = getOriginalPrompt(this.username);
+        const numInitialPromptTokens = encodeLength(initialPrompt);
+        const newMessageItem = createHumanMessage(user, message);
 
-        let newHistory = this.currentHistory + newPromptText;
+        this.messageHistory.push(newMessageItem);
+
+        const modelInfo = ModelInfo[this.model];
+
+        const messages = getLastMessagesUntilMaxTokens(this.messageHistory, modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens);
 
         let finished = false;
         let result = '';
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
-            let newHistoryTokens: number;
 
             try {
-                newHistoryTokens = encode(newHistory).length;
-            } catch (e) {
-                newHistoryTokens = Math.floor((newHistory ?? '').split(' ').length * 1.20);
-            }
+                const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-            const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
-            if (newHistoryTokens > maxallowedtokens) {
-                const allPrompts = newHistory.split(END_OF_PROMPT);
-                const userPrompts = allPrompts.slice(3);
+                const prompt = `${initialPrompt}
+${messages.map(messageToPromptPart).join('\n')}
+${this.username}:`;
 
-                let numPromptsToRemove = 0;
-                let totalTokens = 0;
-
-                const tokensToRemove = newHistoryTokens - maxallowedtokens;
-                logMessage(`<#${this.threadId}> need to remove tokens...`, {
-                    total: newHistoryTokens,
-                    maxallowedtokens,
-                    tokensToRemove,
-                })
-
-                while (numPromptsToRemove < userPrompts.length) {
-                    try {
-                        totalTokens += encode(userPrompts[numPromptsToRemove]).length;
-                    } catch (e) {
-                        totalTokens += Math.floor((userPrompts[numPromptsToRemove] ?? '').split(' ').length * 1.20);
-                    }
-                    numPromptsToRemove++;
-
-                    if (totalTokens > tokensToRemove) {
-                        break;
-                    }
-                }
-
-                logMessage(`<#${this.threadId}> removed prompts:`, userPrompts.slice(0, numPromptsToRemove));
-
-                // truncate parts of earlier history...
-                newHistory = allPrompts.slice(0, 3)
-                    .concat(userPrompts.slice(numPromptsToRemove))
-                    .join(END_OF_PROMPT);
-            }
-
-
-            try {
-                const maxTokens = ModelInfo[this.model].MAX_TOKENS_PER_MESSAGE;
+                logMessage(`Prompt:
+${prompt}`);
 
                 response = await openai.createCompletion({
                     model: this.model,
-                    prompt: newHistory,
+                    prompt,
                     temperature: 0.8,
                     max_tokens: maxTokens,
                     top_p: 0.9,
@@ -189,7 +225,8 @@ ${this.username}:`;
 
                 const text = choice.text;
 
-                newHistory += text;
+                logMessage(`Response:${text}`)
+
                 result += text;
 
                 if (text == undefined) {
@@ -200,13 +237,11 @@ ${this.username}:`;
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    newHistory += END_OF_TEXT;
-
-                    this.currentHistory = newHistory;
+                    const responseMessage = createResponseMessage(this.username, result);
+                    this.messageHistory.push(responseMessage);
 
                     logMessage(`<#${this.threadId}> response: ${result}`);
 
-                    this.allHistory += newPromptText + result + END_OF_TEXT;
                     this.numPrompts++;
 
                     await this.persist();

@@ -18,6 +18,7 @@ import {ModelName} from "../../core/ModelInfo";
 import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
 import {trySendingMessage} from "../../core/TrySendingMessage";
 import {BaseConversation} from "../../core/BaseConversation";
+import {ConversationFactory} from "../../core/ConversationFactory";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -98,11 +99,12 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    const conversation = BaseConversation.create(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
+    const conversation = ConversationFactory.create(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
 
     await conversation.persist();
 
-    logMessage(`New thread by <@${conversation.creatorId}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${conversation.threadId}>.`);
+    // TODO use conversation debug name here
+    logMessage(`New thread by <@${user.id}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${conversation.threadId}>.`);
 
     if (inputValue != null) {
         await conversation.handlePrompt(
