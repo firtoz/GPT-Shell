@@ -1,7 +1,7 @@
 import {Client, Events, Message} from "discord.js";
 import {handleThread} from "./handleThread";
 import {handleDirectMessage} from "./handleDirectMessage";
-import {handleChannelMessage} from "./handleChannelMessage";
+import {BaseConversation} from "../../../../core/BaseConversation";
 
 
 export function StartListeningToMessages(client: Client<boolean>) {
@@ -46,7 +46,7 @@ export function StartListeningToMessages(client: Client<boolean>) {
         }
 
         if (!channel.isThread()) {
-            await handleChannelMessage(channelId, message, currentBotId, channel);
+            await BaseConversation.handleChannelMessage(channelId, message, currentBotId, channel);
 
             return;
         }

@@ -10,7 +10,6 @@ import {
 } from "discord.js";
 import {Command} from "../Command";
 import {getEnv} from "../../utils/GetEnv";
-import {ChatGPTConversation} from "../../core/ChatGPTConversation";
 import {logMessage} from "../../utils/logMessage";
 import {discordClient, getGuildName} from "../discordClient";
 import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
@@ -18,6 +17,7 @@ import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
 import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
 import {trySendingMessage} from "../../core/TrySendingMessage";
+import {ChatGPTConversation} from "../../core/ChatGPTConversation";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -98,14 +98,14 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    const threadInfo = new ChatGPTConversation(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
+    const conversation = new ChatGPTConversation(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
 
-    await threadInfo.persist();
+    await conversation.persist();
 
-    logMessage(`New thread by <@${threadInfo.creatorId}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${threadInfo.threadId}>.`);
+    logMessage(`New thread by <@${conversation.creatorId}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${conversation.threadId}>.`);
 
     if (inputValue != null) {
-        await threadInfo.handlePrompt(
+        await conversation.handlePrompt(
             user,
             thread,
             inputValue

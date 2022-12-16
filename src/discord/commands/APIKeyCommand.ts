@@ -36,6 +36,12 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
         return;
     }
 
+    if(idToUse === null) {
+        logMessage(`idToUse null: ${interaction.user.username} - ${interaction.guildId} - isDM: ${isDM}`)
+        await interaction.followUp('Error... could not identify the server or the user. Please ping the bot owner!');
+        return;
+    }
+
     logMessage(`Token supplied for [${isDM ? `User:${interaction.user.username}`: 
         `Server:${await getGuildName(interaction.guildId)}`}]`);
 
@@ -69,6 +75,7 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
             OpenAICache[idToUse] = api;
 
             await db.set(`CONFIG-API-KEY-${idToUse}`, tokenValue);
+            OpenAICache[idToUse] = undefined;
 
             await interaction.followUp({
                 content: 'Token Accepted.',

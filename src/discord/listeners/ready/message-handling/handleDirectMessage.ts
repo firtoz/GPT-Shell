@@ -1,11 +1,11 @@
 import {DMChannel, Message} from "discord.js";
-import {ChatGPTConversation} from "../../../../core/ChatGPTConversation";
-import {handleMessageAndReturnInfo} from "./handleMessageAndReturnInfo";
+import {ChatGPTConversationVersion0} from "../../../../core/ChatGPTConversationVersion0";
+import {BaseConversation} from "../../../../core/BaseConversation";
 
 export async function handleDirectMessage(channelId: string, message: Message<boolean>, currentBotId: string, channel: DMChannel) {
-    let info = await ChatGPTConversation.retrieve(channelId);
+    let info = await ChatGPTConversationVersion0.retrieve(channelId);
 
-    info = await handleMessageAndReturnInfo(info, channelId, message, channel);
+    info = await BaseConversation.handleMessageAndReturnInfo(info, channelId, message, channel);
 
     info.isDirectMessage = true;
     info.lastDiscordMessageId = message.id;

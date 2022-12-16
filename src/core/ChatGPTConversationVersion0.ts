@@ -10,14 +10,14 @@ import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelInfo, ModelName} from "./ModelInfo";
+import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
-import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
+import {getOpenAIKeyForId, OpenAICache} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {discordClient, getGuildName} from "../discord/discordClient";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {BaseConversation} from "./BaseConversation";
-
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -30,6 +30,11 @@ if (!MAIN_SERVER_ID) {
 }
 
 
+OpenAICache[MAIN_SERVER_ID] = new OpenAIApi(new Configuration({
+    apiKey: OPENAI_API_KEY,
+}));
+
+
 type CompletionError = {
     error?: {
         message: string;
@@ -39,13 +44,17 @@ type CompletionError = {
     }
 };
 
-export class ChatGPTConversation extends BaseConversation {
+export class ChatGPTConversationVersion0 extends BaseConversation {
+    lastUpdated: number = 0;
 
+    lastDiscordMessageId: string | null = null;
 
     deleted: boolean = false;
+    allHistory = '';
     numPrompts = 0;
+    currentHistory = '';
 
-    public version = 2;
+    public isDirectMessage: boolean = false;
 
     constructor(
         threadId: string,
@@ -56,21 +65,25 @@ export class ChatGPTConversation extends BaseConversation {
     ) {
         super(threadId);
 
-        // this.currentHistory = getOriginalPrompt(this.username);
-        // this.allHistory = this.currentHistory;
+        this.currentHistory = getOriginalPrompt(this.username);
+        this.allHistory = this.currentHistory;
     }
 
+    public static async handleRetrievalFromDB(fromDb: ChatGPTConversationVersion0) {
+        const threadId = fromDb.threadId;
 
-    public static async handleRetrievalFromDB(fromDb: ChatGPTConversation) {
-        const result = new ChatGPTConversation(
-            fromDb.threadId,
-            fromDb.creatorId,
-            fromDb.guildId,
-            fromDb.username,
-            fromDb.model,
-        );
+        let updatingPrompts = fromDb.numPrompts === undefined;
+        if (updatingPrompts) {
+            fromDb.numPrompts = fromDb.allHistory.split(END_OF_PROMPT).slice(3).length;
+            logMessage(`<#${fromDb.threadId}>: ${fromDb.numPrompts} prompts.`);
+        }
 
+        const result = new ChatGPTConversationVersion0(threadId, fromDb.creatorId, fromDb.guildId, fromDb.username, fromDb.model ?? 'text-davinci-003');
         Object.assign(result, fromDb);
+
+        if (updatingPrompts) {
+            await result.persist();
+        }
 
         return result;
     }
@@ -92,14 +105,8 @@ ${this.username}:`;
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
-            let newHistoryTokens: number;
 
-            try {
-                newHistoryTokens = encode(newHistory).length;
-            } catch (e) {
-                newHistoryTokens = Math.floor((newHistory ?? '').split(' ').length * 1.20);
-            }
-
+            let newHistoryTokens = encode(newHistory).length;
             const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
             if (newHistoryTokens > maxallowedtokens) {
                 const allPrompts = newHistory.split(END_OF_PROMPT);
@@ -116,11 +123,7 @@ ${this.username}:`;
                 })
 
                 while (numPromptsToRemove < userPrompts.length) {
-                    try {
-                        totalTokens += encode(userPrompts[numPromptsToRemove]).length;
-                    } catch (e) {
-                        totalTokens += Math.floor((userPrompts[numPromptsToRemove] ?? '').split(' ').length * 1.20);
-                    }
+                    totalTokens += encode(userPrompts[numPromptsToRemove]).length;
                     numPromptsToRemove++;
 
                     if (totalTokens > tokensToRemove) {
@@ -310,6 +313,9 @@ ${JSON.stringify(debugInfo, null, '  ')}
             key: {$regex: /^THREAD-/},
             $and: [
                 {
+                    "value.version": {$exists: false}
+                },
+                {
                     $or: [
                         {
                             "value.deleted": false,
@@ -337,7 +343,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         logMessage(`Found ${results.length} number of threads to check.`)
 
         await Promise.all(results.map(async result => {
-            const fromDb = result.value as ChatGPTConversation;
+            const fromDb = result.value as ChatGPTConversationVersion0;
             const info = await this.handleRetrievalFromDB(fromDb);
 
             if (info != null) {
