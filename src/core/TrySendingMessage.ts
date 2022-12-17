@@ -9,6 +9,6 @@ export async function trySendingMessage(channel: TextBasedChannel, response: Bas
             return await channel.send(response);
         }
     } catch (e) {
-        logMessage(`Cannot send a message: [${channel.isDMBased() ? 'DM' : channel.guild?.name ?? channel.guildId}] <#${channel.id}>`)
+        logMessage(`Cannot send a message: [${channel.isDMBased() ? 'DM' : channel.guild?.name ?? channel.guildId}] <#${channel.id}>`, e)
     }
 }

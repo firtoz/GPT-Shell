@@ -19,9 +19,9 @@ export const retrieveConversation = async (threadId: string): Promise<BaseConver
     if (fromDb != null) {
         if ((fromDb as ChatGPTConversation).version !== undefined) {
             result = await ChatGPTConversation.handleRetrievalFromDB(fromDb as ChatGPTConversation);
+        } else {
+            result = await ChatGPTConversationVersion0.handleRetrievalFromDB(fromDb as any);
         }
-
-        result = await ChatGPTConversationVersion0.handleRetrievalFromDB(fromDb as any);
     }
 
     conversationCache[threadId] = result;

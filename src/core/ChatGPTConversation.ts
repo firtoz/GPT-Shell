@@ -205,7 +205,7 @@ ${this.username}:${completeResponseText}`;
                     const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
                     const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
                     const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
-                    const score = 1 / (1 + minutesSinceLastUpdate);
+                    const score = 1 / (1 + hoursSinceLastUpdate);
                     return score;
                 }
 
@@ -385,6 +385,120 @@ ${JSON.stringify(debugInfo, null, '  ')}
 \`\`\``;
 
             await trySendingMessage(channel, {content: debugMessage}, messageToReplyTo);
+
+            return;
+        }
+
+        const deletePrefix = '<DELETE>';
+        if (inputValue.startsWith(deletePrefix)) {
+            let rest = inputValue.slice(deletePrefix.length);
+
+            let toDelete = 1;
+            const param = parseInt(rest);
+            if (!isNaN(param)) {
+                toDelete = param;
+            }
+
+            const deleted = this.messageHistory.splice(this.messageHistory.length - toDelete);
+
+            await trySendingMessage(channel, {
+                content: `Deleted: \n${deleted.map(item => messageToPromptPart(item)).join('\n')}`,
+            });
+
+            return;
+        }
+
+        const historyPrefix = '<HISTORY>';
+        if (inputValue.startsWith(historyPrefix)) {
+            let rest = inputValue.slice(historyPrefix.length);
+
+            let toShow = 1;
+            const param = parseInt(rest);
+            if (!isNaN(param)) {
+                toShow = param;
+            }
+
+            const history = this.messageHistory.slice(this.messageHistory.length - toShow);
+
+            await trySendingMessage(channel, {
+                content: `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`,
+            });
+
+            return;
+        }
+
+        const queryPrefix = '<QUERY>';
+        if (inputValue.startsWith(queryPrefix)) {
+            await channel.sendTyping();
+
+            let rest = inputValue.slice(queryPrefix.length);
+
+            const firstCommaIndex = rest.indexOf(',');
+            if (firstCommaIndex == -1) {
+                await trySendingMessage(channel, {
+                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE`,
+                });
+
+                return;
+            }
+
+            const firstParam = rest.slice(0, firstCommaIndex).trim();
+            const restPrompt = rest.slice(firstCommaIndex + 1).trimStart();
+
+            const weight = parseFloat(firstParam);
+            if (isNaN(weight) || weight < 0 || weight > 1) {
+                await trySendingMessage(channel, {
+                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE\nERROR: time-weight value is not a number between 0 and 1!`,
+                });
+                return;
+            }
+
+            function calculateUpdateScore(lastUpdate: number) {
+                const currentTime = new Date().getTime();
+                const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
+                const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
+                const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
+                const score = 1 / (1 + hoursSinceLastUpdate);
+                return score;
+            }
+
+            const embeddingResponse = await openai.createEmbedding({
+                user: user.id,
+                input: restPrompt,
+                model: 'text-embedding-ada-002',
+            });
+
+            const embedding = embeddingResponse.data.data;
+
+            const updateWeight = weight;
+            const embeddingWeight = 1 - updateWeight;
+
+            const rawSimilarities = this.messageHistory
+                .filter(item => item.embedding.length > 0)
+                .map(item => {
+                    const similarityValue = similarity(embedding[0].embedding, item.embedding[0].embedding);
+                    const updateScore = calculateUpdateScore(item.timestamp)
+
+                    return {
+                        item,
+                        similarity: similarityValue,
+                        updateScore: updateScore,
+                        weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                    }
+                });
+
+            const weightedSims = rawSimilarities
+                .sort((a, b) => b.weighted - a.weighted)
+                .slice(0, 10);
+
+            const response = `
+QUERY: [${weight}, ${restPrompt}]            
+Weighted top 10:
+${weightedSims.map(sim => {
+                return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
+            }).join('\n')}`;
+
+            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
 
             return;
         }
