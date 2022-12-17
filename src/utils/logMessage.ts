@@ -106,8 +106,8 @@ export async function logMessage(...args: any[]): Promise<void> {
     const messageToPrint = args.map(arg => {
         const printed = printArg(arg);
 
-        if (printed.length > 5000) {
-            return printed.slice(0, 5000) + '...';
+        if (printed.length > 10000) {
+            return printed.slice(0, 10000) + '...';
         }
 
         return printed;

@@ -3,7 +3,7 @@ import {MultiMessage} from "../shared/MultiMessage";
 import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
-import {CreateCompletionResponse, OpenAIApi} from 'openai';
+import {CreateCompletionResponse, CreateEmbeddingResponseDataInner, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
@@ -17,6 +17,10 @@ import {BaseConversation} from "./BaseConversation";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
+import {END_OF_PROMPT} from "./constants";
+import './compute-cosine-similarity';
+
+import similarity from "compute-cosine-similarity";
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -39,7 +43,7 @@ type MessageHistoryItem = ({
     username: string;
     content: string;
     numTokens: number;
-    embedding: number[];
+    embedding: CreateEmbeddingResponseDataInner[];
 };
 
 export const messageToPromptPart = (item: MessageHistoryItem): string => {
@@ -78,10 +82,16 @@ export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryI
     return messageHistory.slice(i + 1);
 }
 
-function createHumanMessage(user: User, message: string) {
+async function createHumanMessage(openai: OpenAIApi, user: User, message: string) {
+    const embedding = await openai.createEmbedding({
+        user: user.id,
+        input: message,
+        model: 'text-embedding-ada-002',
+    });
+
     const newMessageItem: MessageHistoryItem = {
         content: message,
-        embedding: [],
+        embedding: embedding.data.data,
         numTokens: 0,
         type: 'human',
         username: user.username,
@@ -94,10 +104,16 @@ function createHumanMessage(user: User, message: string) {
     return newMessageItem;
 }
 
-function createResponseMessage(username: string, message: string) {
+async function createResponseMessage(openai: OpenAIApi, username: string, user: User, responseMessage: string) {
+    const embedding = await openai.createEmbedding({
+        user: user.id,
+        input: responseMessage,
+        model: 'text-embedding-ada-002',
+    });
+
     const newMessageItem: MessageHistoryItem = {
-        content: message,
-        embedding: [],
+        content: responseMessage,
+        embedding: embedding.data.data,
         numTokens: 0,
         type: 'response',
         username: username,
@@ -111,13 +127,13 @@ function createResponseMessage(username: string, message: string) {
 
 
 export class ChatGPTConversation extends BaseConversation {
+    static latestVersion = 2;
 
     deleted: boolean = false;
-    numPrompts = 0;
 
     messageHistory: MessageHistoryItem[] = [];
 
-    public version = 2;
+    public version = ChatGPTConversation.latestVersion;
 
     constructor(
         threadId: string,
@@ -152,16 +168,15 @@ export class ChatGPTConversation extends BaseConversation {
     ): Promise<string | null> {
         const initialPrompt = getOriginalPrompt(this.username);
         const numInitialPromptTokens = encodeLength(initialPrompt);
-        const newMessageItem = createHumanMessage(user, message);
+        const newMessageItem = await createHumanMessage(openai, user, message);
 
         this.messageHistory.push(newMessageItem);
 
         const modelInfo = ModelInfo[this.model];
 
-        const messages = getLastMessagesUntilMaxTokens(this.messageHistory, modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens);
 
         let finished = false;
-        let result = '';
+        let completeResponseText = '';
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
@@ -169,12 +184,69 @@ export class ChatGPTConversation extends BaseConversation {
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                const prompt = `${initialPrompt}
-${messages.map(messageToPromptPart).join('\n')}
-${this.username}:`;
+                const currentResponseTokens = encodeLength(completeResponseText);
 
-                logMessage(`Prompt:
-${prompt}`);
+                const messages = getLastMessagesUntilMaxTokens(this.messageHistory,
+                    modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
+                );
+
+                const prompt = `${initialPrompt}
+${messages.map(messageToPromptPart).join('\n')}${END_OF_PROMPT}
+${this.username}:${completeResponseText}`;
+
+
+                const start = performance.now();
+
+                const embeddingWeight = 0.8;
+                const updateWeight = 1 - embeddingWeight;
+
+                function calculateUpdateScore(lastUpdate: number) {
+                    const currentTime = new Date().getTime();
+                    const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
+                    const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
+                    const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
+                    const score = 1 / (1 + minutesSinceLastUpdate);
+                    return score;
+                }
+
+                const rawSimilarities = this.messageHistory
+                    .filter(item => item !== newMessageItem && item.embedding.length > 0)
+                    .map(item => {
+                        const similarityValue = similarity(newMessageItem.embedding[0].embedding, item.embedding[0].embedding);
+                        const updateScore = calculateUpdateScore(item.timestamp)
+
+                        return {
+                            item,
+                            similarity: similarityValue,
+                            updateScore: updateScore,
+                            weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                        }
+                    });
+
+                const similarities = rawSimilarities
+                    .sort((a, b) => b.similarity - a.similarity)
+                    .slice(0, 10);
+
+                const weightedSims = rawSimilarities
+                    .sort((a, b) => b.weighted - a.weighted)
+                    .slice(0, 10);
+
+                const end = performance.now();
+
+                // logMessage(`Prompt:
+// ${prompt.split('\n').map(item => `> ${item}`).join('\n')}`)
+
+                logMessage(`Prompt is using ${messages.length} messages out of ${this.messageHistory.length} for ${encodeLength(prompt)} tokens.`);
+
+                logMessage(`Similarity top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+${similarities.map(sim => {
+                    return `- ${sim.similarity}: ${sim.item.content}`;
+                }).join('\n')}`);
+
+                logMessage(`Weighted top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+${weightedSims.map(sim => {
+                    return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
+                }).join('\n')}`);
 
                 response = await openai.createCompletion({
                     model: this.model,
@@ -190,6 +262,7 @@ ${prompt}`);
                     response = e.response;
                 } else {
                     logMessage('Unhandled error:', e);
+                    finished = true;
                 }
             }
 
@@ -217,6 +290,7 @@ ${prompt}`);
                 const choices = response.data.choices;
                 if (choices.length !== 1) {
                     logMessage('Not enough choices?!');
+                    finished = true;
 
                     return null;
                 }
@@ -227,33 +301,33 @@ ${prompt}`);
 
                 logMessage(`Response:${text}`)
 
-                result += text;
+                completeResponseText += text;
 
                 if (text == undefined) {
                     logMessage('No text?!');
+                    finished = true;
+
                     return null;
                 }
 
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    const responseMessage = createResponseMessage(this.username, result);
+                    const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText);
                     this.messageHistory.push(responseMessage);
 
-                    logMessage(`<#${this.threadId}> response: ${result}`);
-
-                    this.numPrompts++;
+                    logMessage(`<#${this.threadId}> response: ${completeResponseText}`);
 
                     await this.persist();
 
                     if (onProgress) {
-                        onProgress(result, true);
+                        onProgress(completeResponseText, true);
                     }
 
-                    return result;
+                    return completeResponseText;
                 } else {
                     if (onProgress) {
-                        onProgress(result, false);
+                        onProgress(completeResponseText, false);
                     }
 
                     finished = false;
@@ -302,7 +376,9 @@ ${prompt}`);
 
         if (inputValue === '<DEBUG>') {
             const {lastUpdated} = this;
-            const debugInfo = {lastUpdated};
+            const totalTokens = this.messageHistory.reduce((sum, item) => sum + item.numTokens, 0);
+            const numMessages = this.messageHistory.length;
+            const debugInfo = {lastUpdated, numMessages, totalTokens};
             const debugMessage = `Debug: 
 \`\`\`json
 ${JSON.stringify(debugInfo, null, '  ')}
@@ -345,6 +421,9 @@ ${JSON.stringify(debugInfo, null, '  ')}
             key: {$regex: /^THREAD-/},
             $and: [
                 {
+                    "value.version": ChatGPTConversation.latestVersion,
+                },
+                {
                     $or: [
                         {
                             "value.deleted": false,
@@ -369,7 +448,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
             ],
         }).toArray();
 
-        logMessage(`Found ${results.length} number of threads to check.`)
+        logMessage(`Found ${results.length} number of version 2 threads to check.`)
 
         await Promise.all(results.map(async result => {
             const fromDb = result.value as ChatGPTConversation;
