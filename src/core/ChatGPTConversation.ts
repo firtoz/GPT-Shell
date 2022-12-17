@@ -489,11 +489,11 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
             const weightedSims = rawSimilarities
                 .sort((a, b) => b.weighted - a.weighted)
-                .slice(0, 10);
+                .slice(0, 20);
 
             const response = `
 QUERY: [${weight}, ${restPrompt}]            
-Weighted top 10:
+Weighted top 20:
 ${weightedSims.map(sim => {
                 return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
             }).join('\n')}`;
