@@ -419,10 +419,9 @@ ${JSON.stringify(debugInfo, null, '  ')}
             }
 
             const history = this.messageHistory.slice(this.messageHistory.length - toShow);
+            const response = `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`;
 
-            await trySendingMessage(channel, {
-                content: `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`,
-            });
+            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
 
             return;
         }
