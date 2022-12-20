@@ -137,8 +137,14 @@ ${this.username}:`;
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
+            let newHistoryTokens: number;
 
-            let newHistoryTokens = encode(newHistory).length;
+            try {
+                newHistoryTokens = encode(newHistory).length;
+            } catch (e) {
+                newHistoryTokens = Math.floor((newHistory ?? '').split(' ').length * 1.20);
+            }
+
             const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
             if (newHistoryTokens > maxallowedtokens) {
                 const allPrompts = newHistory.split(END_OF_PROMPT);
@@ -155,7 +161,11 @@ ${this.username}:`;
                 })
 
                 while (numPromptsToRemove < userPrompts.length) {
-                    totalTokens += encode(userPrompts[numPromptsToRemove]).length;
+                    try {
+                        totalTokens += encode(userPrompts[numPromptsToRemove]).length;
+                    } catch (e) {
+                        totalTokens += Math.floor((userPrompts[numPromptsToRemove] ?? '').split(' ').length * 1.20);
+                    }
                     numPromptsToRemove++;
 
                     if (totalTokens > tokensToRemove) {
