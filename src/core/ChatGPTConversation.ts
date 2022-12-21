@@ -20,7 +20,27 @@ import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
 import './compute-cosine-similarity';
 
-import similarity from "compute-cosine-similarity";
+// uses a simple dot product
+function similarity(vec1: number[], vec2: number[]): number {
+    // Check that the vectors are the same length
+    if (vec1.length !== vec2.length) {
+        throw new Error('Vectors must be of the same length');
+    }
+
+    // Initialize the result
+    let result = 0;
+
+    // Calculate the dot product
+    for (let i = 0; i < vec1.length; i++) {
+        result += vec1[i] * vec2[i];
+    }
+
+    // Return the result
+    return result;
+}
+
+
+import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -39,11 +59,11 @@ type MessageHistoryItem = ({
 } | {
     type: 'response';
 }) & {
-    timestamp: number;
+    timestamp: number | undefined;
     username: string;
     content: string;
     numTokens: number;
-    embedding: CreateEmbeddingResponseDataInner[];
+    embedding: null | CreateEmbeddingResponseDataInner[];
 };
 
 export const messageToPromptPart = (item: MessageHistoryItem): string => {
@@ -82,16 +102,16 @@ export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryI
     return messageHistory.slice(i + 1);
 }
 
-async function createHumanMessage(openai: OpenAIApi, user: User, message: string) {
-    const embedding = await openai.createEmbedding({
+async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {
+    const embedding = useEmbedding ? await openai.createEmbedding({
         user: user.id,
         input: message,
         model: 'text-embedding-ada-002',
-    });
+    }) : null;
 
     const newMessageItem: MessageHistoryItem = {
         content: message,
-        embedding: embedding.data.data,
+        embedding: embedding != null ? embedding.data.data : null,
         numTokens: 0,
         type: 'human',
         username: user.username,
@@ -129,11 +149,10 @@ async function createResponseMessage(openai: OpenAIApi, username: string, user: 
 export class ChatGPTConversation extends BaseConversation {
     static latestVersion = 2;
 
-    deleted: boolean = false;
-
     messageHistory: MessageHistoryItem[] = [];
 
     public version = ChatGPTConversation.latestVersion;
+    private makeEmbeddings: boolean = false;
 
     constructor(
         threadId: string,
@@ -168,7 +187,7 @@ export class ChatGPTConversation extends BaseConversation {
     ): Promise<string | null> {
         const initialPrompt = getOriginalPrompt(this.username);
         const numInitialPromptTokens = encodeLength(initialPrompt);
-        const newMessageItem = await createHumanMessage(openai, user, message);
+        const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
 
         this.messageHistory.push(newMessageItem);
 
@@ -194,59 +213,70 @@ export class ChatGPTConversation extends BaseConversation {
 ${messages.map(messageToPromptPart).join('\n')}${END_OF_PROMPT}
 ${this.username}:${completeResponseText}`;
 
+                const newMessageItemEmbedding = newMessageItem.embedding;
+                if (this.makeEmbeddings && newMessageItemEmbedding != null) {
+                    const start = performance.now();
 
-                const start = performance.now();
+                    const embeddingWeight = 0.8;
+                    const updateWeight = 1 - embeddingWeight;
 
-                const embeddingWeight = 0.8;
-                const updateWeight = 1 - embeddingWeight;
+                    function calculateUpdateScore(lastUpdate: number) {
+                        const currentTime = new Date().getTime();
+                        const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
+                        const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
+                        const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
+                        const score = 1 / (1 + hoursSinceLastUpdate);
+                        return score;
+                    }
 
-                function calculateUpdateScore(lastUpdate: number) {
-                    const currentTime = new Date().getTime();
-                    const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
-                    const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
-                    const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
-                    const score = 1 / (1 + hoursSinceLastUpdate);
-                    return score;
-                }
+                    const rawSimilarities = this.messageHistory
+                        .map((item, index) => {
+                            if (item !== newMessageItem && item.embedding && item.embedding.length > 0) {
+                                const similarityValue = similarity(newMessageItemEmbedding[0].embedding, item.embedding![0].embedding);
+                                const updateScore = 1 / (this.messageHistory.length - index);
 
-                const rawSimilarities = this.messageHistory
-                    .filter(item => item !== newMessageItem && item.embedding.length > 0)
-                    .map(item => {
-                        const similarityValue = similarity(newMessageItem.embedding[0].embedding, item.embedding[0].embedding);
-                        const updateScore = calculateUpdateScore(item.timestamp)
+                                return {
+                                    item,
+                                    similarity: similarityValue,
+                                    updateScore: updateScore,
+                                    weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                                }
+                            } else {
+                                return {
+                                    item,
+                                    similarity: 0,
+                                    weighted: 0,
+                                    updateScore: 0,
+                                }
+                            }
+                        });
 
-                        return {
-                            item,
-                            similarity: similarityValue,
-                            updateScore: updateScore,
-                            weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
-                        }
-                    });
+                    const similarities = rawSimilarities
+                        .sort((a, b) => b.similarity - a.similarity)
+                        .slice(0, 10);
 
-                const similarities = rawSimilarities
-                    .sort((a, b) => b.similarity - a.similarity)
-                    .slice(0, 10);
+                    const weightedSims = rawSimilarities
+                        .sort((a, b) => b.weighted - a.weighted)
+                        .slice(0, 10);
 
-                const weightedSims = rawSimilarities
-                    .sort((a, b) => b.weighted - a.weighted)
-                    .slice(0, 10);
+                    const end = performance.now();
 
-                const end = performance.now();
-
-                // logMessage(`Prompt:
+                    // logMessage(`Prompt:
 // ${prompt.split('\n').map(item => `> ${item}`).join('\n')}`)
 
-                logMessage(`Prompt is using ${messages.length} messages out of ${this.messageHistory.length} for ${encodeLength(prompt)} tokens.`);
+                    logMessage(`Prompt is using ${messages.length} messages out of ${this.messageHistory.length} for ${encodeLength(prompt)} tokens.`);
 
-                logMessage(`Similarity top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+                    logMessage(`Similarity top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
 ${similarities.map(sim => {
-                    return `- ${sim.similarity}: ${sim.item.content}`;
-                }).join('\n')}`);
+                        return `- ${sim.similarity}: ${sim.item.content}`;
+                    }).join('\n')}`);
 
-                logMessage(`Weighted top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+                    logMessage(`Weighted top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
 ${weightedSims.map(sim => {
-                    return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
-                }).join('\n')}`);
+                        return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
+                    }).join('\n')}`);
+
+                }
 
                 response = await openai.createCompletion({
                     model: this.model,
@@ -427,7 +457,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         }
 
         const queryPrefix = '<QUERY>';
-        if (inputValue.startsWith(queryPrefix)) {
+        if (this.makeEmbeddings && inputValue.startsWith(queryPrefix)) {
             await channel.sendTyping();
 
             let rest = inputValue.slice(queryPrefix.length);
@@ -473,16 +503,25 @@ ${JSON.stringify(debugInfo, null, '  ')}
             const embeddingWeight = 1 - updateWeight;
 
             const rawSimilarities = this.messageHistory
-                .filter(item => item.embedding.length > 0)
-                .map(item => {
-                    const similarityValue = similarity(embedding[0].embedding, item.embedding[0].embedding);
-                    const updateScore = calculateUpdateScore(item.timestamp)
+                .map((item, index) => {
+                    const updateScore = 1 / (this.messageHistory.length - index);
+
+                    if (item.embedding && item.embedding.length > 0) {
+                        const similarityValue = similarity(embedding[0].embedding, item.embedding![0].embedding);
+
+                        return {
+                            item,
+                            similarity: similarityValue,
+                            updateScore: updateScore,
+                            weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                        }
+                    }
 
                     return {
                         item,
-                        similarity: similarityValue,
-                        updateScore: updateScore,
-                        weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                        similarity: 0,
+                        weighted: 0,
+                        updateScore: 0,
                     }
                 });
 
@@ -579,207 +618,81 @@ ${weightedSims.map(sim => {
         logMessage('Initialisation complete.');
     }
 
-    private async initialise() {
-        logMessage(`Initialising conversation: <#${this.threadId}>.`);
+    static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
+        try {
+            const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
 
-        const currentBotId = discordClient.user!.id;
-
-        if (this.isDirectMessage) {
-            const channel = await discordClient.channels.fetch(this.threadId);
-
-            if (!channel) {
-                return;
-            }
-
-            if (!channel.isDMBased()) {
-                return;
-            }
-
-            if (!channel.isTextBased()) {
-                return;
-            }
-
-            const user = await discordClient.users.fetch(this.creatorId);
-            if (!user) {
-                // cannot find user
-                return;
-            }
-
-            let newMessagesCollection: Collection<string, Message<false>>;
-
-            if (this.lastDiscordMessageId == null) {
-                newMessagesCollection = await channel.messages.fetch({
-                    limit: 20,
-                });
-            } else {
-                newMessagesCollection = await channel.messages.fetch({
-                    after: this.lastDiscordMessageId,
-                });
-            }
-
-
-            let newMessages = Array.from(newMessagesCollection.values());
-            newMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-
-            logMessage(`DM [${user.username}] new messages: ${newMessages.length}.`);
-
-            await Promise.all(newMessages.map(newMessage => newMessage.fetch()));
-
-            newMessages = newMessages.filter(message => message.author.id !== currentBotId);
-
-            if (newMessages.length === 0) {
-                console.log('No new messages, ignoring.');
-                return;
-            }
-
-            let lastMessage: Message<false> = newMessages[newMessages.length - 1];
-
-            await trySendingMessage(channel, {
-                content: `[[${getWhimsicalResponse(user.id)}
-
-I will respond to this message now.]]`
-            });
-
-            this.handlePrompt(lastMessage.author, channel, lastMessage.content, lastMessage)
-                .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
-
-            return;
-        }
-
-        if (this.guildId === null) {
-            logMessage('no guild for info: ', this);
-
-            const guilds = Array.from(discordClient.guilds.cache.values());
-            for (const server of guilds) {
-                const channel = await server.channels.fetch(this.threadId);
-                if (channel != null) {
-                    logMessage('found guild for info: ', this, server.id);
-                    this.guildId = server.id;
-                    await this.persist();
-                }
-            }
-        }
-
-        const server = discordClient.guilds.cache.get(this.guildId);
-
-        if (server == null) {
-            logMessage('INITIALIZEThreads', 'server null for info', this.guildId);
-            return;
-        }
-
-        const threadResponse = await this.tryGetThread(server);
-
-        if (!threadResponse.success) {
-            logMessage(`${this.threadId} <#${this.threadId}>: Failed to get thread, status: ${threadResponse.status}`);
-
-            if (threadResponse.status === 404) {
-                logMessage(`Thread ${this.threadId} <#${this.threadId}> deleted (or never existed)! Marking as deleted...`);
-                this.deleted = true;
-                await this.persist();
-
-                // TODO remove
-                return;
-            }
-
-            return;
-        }
-
-        const thread = threadResponse.thread;
-
-        if (thread == null) {
-            logMessage(`Thread <#${this.threadId}> deleted, ignoring.`);
-            return;
-        }
-
-        if (!thread.isTextBased()) {
-            return;
-        }
-
-        let newMessagesCollection: Collection<string, Message<true>>;
-
-        if (this.lastDiscordMessageId == null) {
-            newMessagesCollection = await thread.messages.fetch({
-                limit: 20,
-            });
-        } else {
-            newMessagesCollection = await thread.messages.fetch({
-                after: this.lastDiscordMessageId,
-            });
-        }
-
-        const newMessages = Array.from(newMessagesCollection.values());
-        newMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-
-        logMessage(`Thread [${thread.guild.name}] <#${this.threadId}> new messages: ${newMessages.length}.`);
-
-        if (newMessages.length === 0) {
-            console.log('No new messages, ignoring.');
-            return;
-        }
-
-        await Promise.all(newMessages.map(newMessage => newMessage.fetch()));
-
-        let lastRelevantMessage: Message<true> | null = null;
-
-        if (!thread.isThread()) {
-            for (let newMessage of newMessages) {
-                if (newMessage.author.id === currentBotId) {
-                    continue;
-                }
-
-                if (newMessage.mentions.users.has(currentBotId)) {
-                    lastRelevantMessage = newMessage;
+            let promptStart = 0;
+            for (let i = 0; i < promptSplit.length; ++i) {
+                const promptPart = promptSplit[i];
+                if (promptPart.trim().endsWith('Generate only one response per prompt.')) {
+                    promptStart = i + 1;
+                    break;
                 }
             }
 
-            this.lastDiscordMessageId = newMessages[newMessages.length - 1].id;
+            const actualConversation = promptSplit.slice(promptStart);
 
-            if (lastRelevantMessage != null) {
-                logMessage(`Found message for thread: <#${this.threadId}>`, lastRelevantMessage.content);
+            const history: MessageHistoryItem[] = [];
 
-                if (!messageReceivedInThread[this.threadId]) {
-                    await trySendingMessage(thread, {
-                        content: `[[${getWhimsicalResponse(lastRelevantMessage.author.id)}
+            for (let string of actualConversation) {
+                const match = string
+                    .match(/\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/)
 
-I will respond to this message now.]]`
+                if (!match || !match.groups) {
+                    debugger;
+                    throw new Error('No match!');
+                }
+
+                const {prompt, response, userId, username} = match.groups;
+
+                if (!response && !prompt) {
+                    throw new Error('Something wrong with the string, no prompt or response');
+                }
+
+                if (response) {
+                    history.push({
+                        type: 'response',
+                        content: response.trimStart(),
+                        numTokens: encodeLength(response),
+                        embedding: null,
+                        timestamp: undefined,
+                        username: 'GPT-Shell',
                     });
-                    this.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
-                        .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
-                } else {
-                    logMessage(`A new message is being handled for <#${this.threadId}> already, no need to respond.`);
+                }
+
+                if (prompt) {
+                    history.push({
+                        type: 'human',
+                        username: username,
+                        userId: userId,
+                        content: prompt,
+                        numTokens: encodeLength(prompt),
+                        embedding: null,
+                        timestamp: undefined,
+                    })
                 }
             }
 
-            await this.persist();
+            const result: ChatGPTConversation = new ChatGPTConversation(
+                fromDb.threadId,
+                fromDb.creatorId,
+                fromDb.guildId,
+                fromDb.username,
+                fromDb.model,
+            );
 
-            return;
+            result.messageHistory = history;
+            result.makeEmbeddings = false;
+            result.deleted = false;
+            result.isDirectMessage = fromDb.isDirectMessage;
+            result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
+            result.lastUpdated = fromDb.lastUpdated;
+
+            return result;
+        } catch (e) {
+            logMessage(`Could not upgrade conversation... ${fromDb.threadId}`, e);
+            return null;
         }
-
-
-        for (let newMessage of newMessages) {
-            if (newMessage.author.id === this.creatorId) {
-                lastRelevantMessage = newMessage;
-            }
-        }
-
-        if (lastRelevantMessage != null) {
-            logMessage(`Found message for thread: <#${this.threadId}>`, lastRelevantMessage.content);
-
-            if (!messageReceivedInThread[this.threadId]) {
-                await trySendingMessage(thread, {
-                    content: `[[${getWhimsicalResponse(this.creatorId)}
-
-I will respond to your last prompt now.]]`,
-                });
-                this.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
-                    .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
-            } else {
-                logMessage(`A new message is being handled for <#${this.threadId}> already, no need to respond.`);
-            }
-        } else {
-            logMessage(`Found no messages from user for thread: <#${this.threadId}>`);
-        }
-        this.lastDiscordMessageId = newMessages[newMessages.length - 1].id;
-        await this.persist();
     }
 }
