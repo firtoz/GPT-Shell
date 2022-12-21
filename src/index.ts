@@ -4,7 +4,7 @@ import interactionCreate from "./discord/listeners/interactionCreate";
 import {getEnv} from "./utils/GetEnv";
 import {discordClient} from "./discord/discordClient";
 import * as process from "process";
-import {logMessage} from "./utils/logMessage";
+import {logMessage, messagePromise} from "./utils/logMessage";
 import serverJoin from "./discord/listeners/serverJoin";
 
 (async () => {
@@ -26,10 +26,14 @@ import serverJoin from "./discord/listeners/serverJoin";
             setTimeout(() => {
                 process.exit(1);
             }, 10000);
-            logMessage('CRASH:', e.message, e.stack, e)
-                .finally(() => {
-                    process.exit(1);
-                });
+            logMessage('CRASH:', e);
+
+            if (messagePromise) {
+                messagePromise
+                    .finally(() => {
+                        process.exit(1);
+                    });
+            }
         });
 
     await discordClient.login(botToken);

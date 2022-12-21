@@ -29,5 +29,5 @@ export const retrieveConversation = async (threadId: string): Promise<BaseConver
 
     conversationCache[threadId] = result;
 
-    return null;
+    return result;
 }

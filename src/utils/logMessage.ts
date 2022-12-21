@@ -45,6 +45,14 @@ function getLogChannel(): Promise<TextBasedChannel | null> {
 function stringify(obj: any) {
     const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
+        if (value instanceof Error) {
+            return `<ERROR ${value.name}> (cause: "${value.cause}"): message:"${value.message}": ${value.stack}`;
+        }
+
+        if(value instanceof RegExp) {
+            return `<REGEX: ${value.source}>`
+        }
+
         if (typeof value === 'object' && value !== null) {
             if (seen.has(value)) {
                 // Replace circular reference with a placeholder value

@@ -3,6 +3,10 @@ import {MultiMessage} from "../shared/MultiMessage";
 import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
+function sanitiseStringForRegex(input: string) {
+    return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
+}
+
 import {CreateCompletionResponse, CreateEmbeddingResponseDataInner, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
@@ -124,16 +128,16 @@ async function createHumanMessage(openai: OpenAIApi, user: User, message: string
     return newMessageItem;
 }
 
-async function createResponseMessage(openai: OpenAIApi, username: string, user: User, responseMessage: string) {
-    const embedding = await openai.createEmbedding({
+async function createResponseMessage(openai: OpenAIApi, username: string, user: User, responseMessage: string, makeEmbeddings: boolean) {
+    const embedding = makeEmbeddings ? await openai.createEmbedding({
         user: user.id,
         input: responseMessage,
         model: 'text-embedding-ada-002',
-    });
+    }) : null;
 
     const newMessageItem: MessageHistoryItem = {
         content: responseMessage,
-        embedding: embedding.data.data,
+        embedding: embedding ? embedding.data.data : null,
         numTokens: 0,
         type: 'response',
         username: username,
@@ -343,7 +347,7 @@ ${weightedSims.map(sim => {
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText);
+                    const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText, this.makeEmbeddings);
                     this.messageHistory.push(responseMessage);
 
                     logMessage(`<#${this.threadId}> response: ${completeResponseText}`);
@@ -619,6 +623,8 @@ ${weightedSims.map(sim => {
     }
 
     static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
+        logMessage(`trying to convert <#${fromDb.threadId}>(${fromDb.threadId})!`);
+
         try {
             const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
 
@@ -636,17 +642,19 @@ ${weightedSims.map(sim => {
             const history: MessageHistoryItem[] = [];
 
             for (let string of actualConversation) {
+                const originalRegex = /\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/;
+                const newRegex = new RegExp(originalRegex.source.replace('GPT-Shell', sanitiseStringForRegex(fromDb.username)));
                 const match = string
-                    .match(/\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/)
+                    .match(newRegex)
 
                 if (!match || !match.groups) {
-                    debugger;
                     throw new Error('No match!');
                 }
 
                 const {prompt, response, userId, username} = match.groups;
 
                 if (!response && !prompt) {
+                    logMessage({string, newRegex: newRegex.source});
                     throw new Error('Something wrong with the string, no prompt or response');
                 }
 
@@ -657,7 +665,7 @@ ${weightedSims.map(sim => {
                         numTokens: encodeLength(response),
                         embedding: null,
                         timestamp: undefined,
-                        username: 'GPT-Shell',
+                        username: fromDb.username,
                     });
                 }
 
@@ -689,9 +697,11 @@ ${weightedSims.map(sim => {
             result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
             result.lastUpdated = fromDb.lastUpdated;
 
+            logMessage(`managed to convert <#${result.threadId}>!`);
+
             return result;
         } catch (e) {
-            logMessage(`Could not upgrade conversation... ${fromDb.threadId}`, e);
+            logMessage(`Could not upgrade conversation... ${fromDb.threadId} <#${fromDb.threadId}>`, e);
             return null;
         }
     }
