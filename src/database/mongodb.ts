@@ -32,6 +32,16 @@ export class KeyValueDB {
         return true;
     }
 
+    async close() {
+        if (this.client == null || DB_NAME == null) {
+            return false;
+        }
+
+        await this.client.close();
+
+        return true;
+    }
+
     async get<T = any>(key: string): Promise<T | null> {
         if (this.collection == null) {
             throw new Error('No connection.');

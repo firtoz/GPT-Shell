@@ -4,8 +4,8 @@ import {
     ApplicationCommandOptionType,
     ApplicationCommandType,
     Client,
-    CommandInteraction,
-    EmbedType,
+    CommandInteraction, EmbedBuilder,
+    EmbedType, Message,
     ThreadAutoArchiveDuration
 } from "discord.js";
 import {Command} from "../Command";
@@ -68,13 +68,9 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
     const user = interaction.user;
     const userId = user.id;
     const firstMessage = `${value ? `<@${userId}>: ${value}` : `Chat with <@${userId}>`}`;
-    const message = await interaction.followUp({
-        options: {
-            username: user.username,
-            avatarURL: user.avatarURL() ?? '',
-        },
-        content: firstMessage,
-    });
+    if (!interaction.channel) {
+        await discordClient.channels.fetch(interaction.channelId);
+    }
 
     const inputValue = inputOption?.value as string | undefined;
 
@@ -83,12 +79,66 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     let thread: AnyThreadChannel;
 
+    let message: Message;
+
+    const channel = interaction.channel;
+
+    const embeds = [
+        new EmbedBuilder()
+            .setAuthor({
+                name: user.username,
+                iconURL: user.avatarURL() ?? undefined,
+            })
+            .setDescription(firstMessage),
+    ];
+
+    let referenceThreadHere: Message | null = null;
+
+    if (channel?.isThread()) {
+        referenceThreadHere = await interaction.followUp({
+            options: {
+                username: user.username,
+                avatarURL: user.avatarURL() ?? '',
+            },
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('Creating new thread in channel...'),
+            ]
+        });
+
+        const starterMessage = await channel.fetchStarterMessage();
+
+        if (starterMessage != null) {
+            message = await starterMessage.reply({
+                content: 'Thread spinoff: ',
+                embeds
+            });
+        } else {
+            message = await channel.send({
+                embeds,
+            });
+        }
+    } else {
+        message = await interaction.followUp({
+            embeds,
+        })
+    }
+
     try {
         thread = await message.startThread({
             name: threadName,
             reason: 'ChatGPT',
             autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
         });
+
+        if (referenceThreadHere != null) {
+            await referenceThreadHere.edit({
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`Created spinoff: <#${thread.id}>`),
+                ]
+            })
+        }
     } catch (e) {
         try {
             await interaction.followUp('Could not create thread... Please ask an admin for permissions!');
