@@ -1,28 +1,28 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
-
-function sanitiseStringForRegex(input: string) {
-    return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
-}
-
-import {CreateCompletionResponse, CreateEmbeddingResponseDataInner, OpenAIApi} from 'openai';
+import {CreateCompletionResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelInfo, ModelName} from "./ModelInfo";
 import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
-import {discordClient, getGuildName} from "../discord/discordClient";
-import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
-import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
+import {getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
 import './compute-cosine-similarity';
+import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
+import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
+import {MessageHistoryItem} from "./MessageHistoryItem";
+
+function sanitiseStringForRegex(input: string) {
+    return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
+}
 
 // uses a simple dot product
 function similarity(vec1: number[], vec2: number[]): number {
@@ -44,8 +44,6 @@ function similarity(vec1: number[], vec2: number[]): number {
 }
 
 
-import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
-
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
 
@@ -57,53 +55,12 @@ if (!MAIN_SERVER_ID) {
 }
 
 
-type MessageHistoryItem = ({
-    type: 'human';
-    userId: string;
-} | {
-    type: 'response';
-}) & {
-    timestamp: number | undefined;
-    username: string;
-    content: string;
-    numTokens: number;
-    embedding: null | CreateEmbeddingResponseDataInner[];
-};
-
 export const messageToPromptPart = (item: MessageHistoryItem): string => {
     if (item.type === "human") {
         return `(${item.userId}|${item.username}):${item.content}`;
     }
 
     return `${item.username}:${item.content}`;
-}
-
-export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryItem> & Pick<MessageHistoryItem, 'numTokens'>)>(
-    messageHistory: T[],
-    maxTokens: number,
-): T[] => {
-    let sum = 0;
-
-    if (messageHistory.length < 1) {
-        return messageHistory;
-    }
-
-    let i = messageHistory.length - 1;
-    if (messageHistory[i].numTokens > maxTokens) {
-        return [];
-    }
-
-    while (i >= 0) {
-        let current = messageHistory[i];
-        if (sum + current.numTokens <= maxTokens) {
-            sum += current.numTokens;
-        } else {
-            break;
-        }
-        i--;
-    }
-
-    return messageHistory.slice(i + 1);
 }
 
 async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {

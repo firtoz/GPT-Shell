@@ -1,6 +1,6 @@
 import {it, expect, describe} from 'vitest';
 
-import {getLastMessagesUntilMaxTokens} from "../src/core/ChatGPTConversation";
+import {getLastMessagesUntilMaxTokens} from "../src/core/GetLastMessagesUntilMaxTokens";
 
 describe('getLastMessagesUntilMaxTokens', () => {
     it('should return messages that sum up to less than the expected number', () => {
