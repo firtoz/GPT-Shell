@@ -701,7 +701,8 @@ ${weightedSims.map(sim => {
 
             return result;
         } catch (e) {
-            logMessage(`Could not upgrade conversation... ${fromDb.threadId} <#${fromDb.threadId}>`, e);
+            const adminPingId = getEnv('ADMIN_PING_ID')
+            logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not upgrade conversation... ${fromDb.threadId} <#${fromDb.threadId}>`, e);
             return null;
         }
     }

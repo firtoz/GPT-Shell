@@ -110,11 +110,12 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
         if (starterMessage != null) {
             message = await starterMessage.reply({
-                content: 'Thread spinoff: ',
+                content: `Thread spun off from <#${channel.id}>: `,
                 embeds
             });
         } else {
             message = await channel.send({
+                content: `Thread spun off from <#${channel.id}>: `,
                 embeds,
             });
         }
@@ -135,7 +136,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
             await referenceThreadHere.edit({
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`Created spinoff: <#${thread.id}>`),
+                        .setDescription(`Created spinoff: <#${thread.id}>.`)
                 ]
             })
         }
