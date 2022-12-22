@@ -1,25 +1,50 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
-// @ts-ignore
-import {encode} from 'gpt-3-encoder';
-import {Configuration, CreateCompletionResponse, OpenAIApi} from 'openai';
+function sanitiseStringForRegex(input: string) {
+    return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
+}
+
+import {CreateCompletionResponse, CreateEmbeddingResponseDataInner, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelInfo, ModelName} from "./ModelInfo";
-import {getOriginalPrompt} from "./GetOriginalPrompt";
-import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
-import {getOpenAIKeyForId, OpenAICache} from "./GetOpenAIKeyForId";
+import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {discordClient, getGuildName} from "../discord/discordClient";
+import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
+import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
+import {BaseConversation} from "./BaseConversation";
+import {getOriginalPrompt} from "./GetOriginalPrompt";
+import {CompletionError} from "./CompletionError";
+import {encodeLength} from "./EncodeLength";
+import {END_OF_PROMPT} from "./constants";
+import './compute-cosine-similarity';
 
-const cache: Record<string, ChatGPTConversation | undefined | null> = {};
+// uses a simple dot product
+function similarity(vec1: number[], vec2: number[]): number {
+    // Check that the vectors are the same length
+    if (vec1.length !== vec2.length) {
+        throw new Error('Vectors must be of the same length');
+    }
 
-const THREAD_PREFIX = `THREAD-`;
+    // Initialize the result
+    let result = 0;
 
+    // Calculate the dot product
+    for (let i = 0; i < vec1.length; i++) {
+        result += vec1[i] * vec2[i];
+    }
+
+    // Return the result
+    return result;
+}
+
+
+import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -32,90 +57,128 @@ if (!MAIN_SERVER_ID) {
 }
 
 
-OpenAICache[MAIN_SERVER_ID] = new OpenAIApi(new Configuration({
-    apiKey: OPENAI_API_KEY,
-}));
-
-
-type CompletionError = {
-    error?: {
-        message: string;
-        type: string;
-        param: string | null;
-        code: string | null;
-    }
+type MessageHistoryItem = ({
+    type: 'human';
+    userId: string;
+} | {
+    type: 'response';
+}) & {
+    timestamp: number | undefined;
+    username: string;
+    content: string;
+    numTokens: number;
+    embedding: null | CreateEmbeddingResponseDataInner[];
 };
 
-export class ChatGPTConversation {
-    lastUpdated: number = 0;
+export const messageToPromptPart = (item: MessageHistoryItem): string => {
+    if (item.type === "human") {
+        return `(${item.userId}|${item.username}):${item.content}`;
+    }
 
-    lastDiscordMessageId: string | null = null;
+    return `${item.username}:${item.content}`;
+}
 
-    deleted: boolean = false;
-    allHistory = '';
-    numPrompts = 0;
-    currentHistory = '';
+export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryItem> & Pick<MessageHistoryItem, 'numTokens'>)>(
+    messageHistory: T[],
+    maxTokens: number,
+): T[] => {
+    let sum = 0;
 
-    public isDirectMessage: boolean = false;
+    if (messageHistory.length < 1) {
+        return messageHistory;
+    }
+
+    let i = messageHistory.length - 1;
+    if (messageHistory[i].numTokens > maxTokens) {
+        return [];
+    }
+
+    while (i >= 0) {
+        let current = messageHistory[i];
+        if (sum + current.numTokens <= maxTokens) {
+            sum += current.numTokens;
+        } else {
+            break;
+        }
+        i--;
+    }
+
+    return messageHistory.slice(i + 1);
+}
+
+async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {
+    const embedding = useEmbedding ? await openai.createEmbedding({
+        user: user.id,
+        input: message,
+        model: 'text-embedding-ada-002',
+    }) : null;
+
+    const newMessageItem: MessageHistoryItem = {
+        content: message,
+        embedding: embedding != null ? embedding.data.data : null,
+        numTokens: 0,
+        type: 'human',
+        username: user.username,
+        userId: user.id,
+        timestamp: new Date().getTime(),
+    };
+
+    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+    return newMessageItem;
+}
+
+async function createResponseMessage(openai: OpenAIApi, username: string, user: User, responseMessage: string, makeEmbeddings: boolean) {
+    const embedding = makeEmbeddings ? await openai.createEmbedding({
+        user: user.id,
+        input: responseMessage,
+        model: 'text-embedding-ada-002',
+    }) : null;
+
+    const newMessageItem: MessageHistoryItem = {
+        content: responseMessage,
+        embedding: embedding ? embedding.data.data : null,
+        numTokens: 0,
+        type: 'response',
+        username: username,
+        timestamp: new Date().getTime(),
+    };
+
+    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+    return newMessageItem;
+}
+
+
+export class ChatGPTConversation extends BaseConversation {
+    static latestVersion = 2;
+
+    messageHistory: MessageHistoryItem[] = [];
+
+    public version = ChatGPTConversation.latestVersion;
+    private makeEmbeddings: boolean = false;
 
     constructor(
-        public threadId: string,
-        public creatorId: string,
-        public guildId: string,
+        threadId: string,
+        creatorId: string,
+        guildId: string,
         private username: string,
         private model: ModelName,
     ) {
-        this.currentHistory = getOriginalPrompt(this.username);
-        this.allHistory = this.currentHistory;
+        super(threadId, creatorId, guildId);
     }
 
-    async persist() {
-        cache[this.threadId] = this;
-        this.lastUpdated = new Date().getTime();
-        await db.set(ChatGPTConversation.getDBKey(this.threadId), this).catch(e => {
-            logMessage('failed to persist thread: ', e);
-        });
-    }
 
-    private static getDBKey(threadId: string) {
-        return `${THREAD_PREFIX}${threadId}`;
-    }
+    public static async handleRetrievalFromDB(fromDb: ChatGPTConversation) {
+        const result = new ChatGPTConversation(
+            fromDb.threadId,
+            fromDb.creatorId,
+            fromDb.guildId,
+            fromDb.username,
+            fromDb.model,
+        );
 
-    static async retrieve(threadId: string): Promise<ChatGPTConversation | null> {
-        const inCache = cache[threadId];
-        if (inCache !== undefined) {
-            // either null or exists
-            // if null, not our thread
-            return inCache;
-        }
-
-        const fromDb = await db.get<ChatGPTConversation>(ChatGPTConversation.getDBKey(threadId));
-
-        if (fromDb != null) {
-            return await this.handleRetrievalFromDB(fromDb);
-        } else {
-            cache[threadId] = null;
-        }
-
-        return null;
-    }
-
-    private static async handleRetrievalFromDB(fromDb: ChatGPTConversation) {
-        const threadId = fromDb.threadId;
-
-        let updatingPrompts = fromDb.numPrompts === undefined;
-        if (updatingPrompts) {
-            fromDb.numPrompts = fromDb.allHistory.split(END_OF_PROMPT).slice(3).length;
-            logMessage(`<#${fromDb.threadId}>: ${fromDb.numPrompts} prompts.`);
-        }
-
-        const result = new ChatGPTConversation(threadId, fromDb.creatorId, fromDb.guildId, fromDb.username, fromDb.model ?? 'text-davinci-003');
         Object.assign(result, fromDb);
-        cache[threadId] = result;
-
-        if (updatingPrompts) {
-            await result.persist();
-        }
 
         return result;
     }
@@ -126,68 +189,102 @@ export class ChatGPTConversation {
         message: string,
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
-        const newPromptText = `
-(${user.username}|${user.id}): ${message}${END_OF_PROMPT}
-${this.username}:`;
+        const initialPrompt = getOriginalPrompt(this.username);
+        const numInitialPromptTokens = encodeLength(initialPrompt);
+        const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
 
-        let newHistory = this.currentHistory + newPromptText;
+        this.messageHistory.push(newMessageItem);
+
+        const modelInfo = ModelInfo[this.model];
+
 
         let finished = false;
-        let result = '';
+        let completeResponseText = '';
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
-            let newHistoryTokens: number;
 
             try {
-                newHistoryTokens = encode(newHistory).length;
-            } catch (e) {
-                newHistoryTokens = Math.floor((newHistory ?? '').split(' ').length * 1.20);
-            }
+                const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-            const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
-            if (newHistoryTokens > maxallowedtokens) {
-                const allPrompts = newHistory.split(END_OF_PROMPT);
-                const userPrompts = allPrompts.slice(3);
+                const currentResponseTokens = encodeLength(completeResponseText);
 
-                let numPromptsToRemove = 0;
-                let totalTokens = 0;
+                const messages = getLastMessagesUntilMaxTokens(this.messageHistory,
+                    modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
+                );
 
-                const tokensToRemove = newHistoryTokens - maxallowedtokens;
-                logMessage(`<#${this.threadId}> need to remove tokens...`, {
-                    total: newHistoryTokens,
-                    maxallowedtokens,
-                    tokensToRemove,
-                })
+                const prompt = `${initialPrompt}
+${messages.map(messageToPromptPart).join('\n')}${END_OF_PROMPT}
+${this.username}:${completeResponseText}`;
 
-                while (numPromptsToRemove < userPrompts.length) {
-                    try {
-                        totalTokens += encode(userPrompts[numPromptsToRemove]).length;
-                    } catch (e) {
-                        totalTokens += Math.floor((userPrompts[numPromptsToRemove] ?? '').split(' ').length * 1.20);
+                const newMessageItemEmbedding = newMessageItem.embedding;
+                if (this.makeEmbeddings && newMessageItemEmbedding != null) {
+                    const start = performance.now();
+
+                    const embeddingWeight = 0.8;
+                    const updateWeight = 1 - embeddingWeight;
+
+                    function calculateUpdateScore(lastUpdate: number) {
+                        const currentTime = new Date().getTime();
+                        const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
+                        const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
+                        const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
+                        const score = 1 / (1 + hoursSinceLastUpdate);
+                        return score;
                     }
-                    numPromptsToRemove++;
 
-                    if (totalTokens > tokensToRemove) {
-                        break;
-                    }
+                    const rawSimilarities = this.messageHistory
+                        .map((item, index) => {
+                            if (item !== newMessageItem && item.embedding && item.embedding.length > 0) {
+                                const similarityValue = similarity(newMessageItemEmbedding[0].embedding, item.embedding![0].embedding);
+                                const updateScore = 1 / (this.messageHistory.length - index);
+
+                                return {
+                                    item,
+                                    similarity: similarityValue,
+                                    updateScore: updateScore,
+                                    weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                                }
+                            } else {
+                                return {
+                                    item,
+                                    similarity: 0,
+                                    weighted: 0,
+                                    updateScore: 0,
+                                }
+                            }
+                        });
+
+                    const similarities = rawSimilarities
+                        .sort((a, b) => b.similarity - a.similarity)
+                        .slice(0, 10);
+
+                    const weightedSims = rawSimilarities
+                        .sort((a, b) => b.weighted - a.weighted)
+                        .slice(0, 10);
+
+                    const end = performance.now();
+
+                    // logMessage(`Prompt:
+// ${prompt.split('\n').map(item => `> ${item}`).join('\n')}`)
+
+                    logMessage(`Prompt is using ${messages.length} messages out of ${this.messageHistory.length} for ${encodeLength(prompt)} tokens.`);
+
+                    logMessage(`Similarity top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+${similarities.map(sim => {
+                        return `- ${sim.similarity}: ${sim.item.content}`;
+                    }).join('\n')}`);
+
+                    logMessage(`Weighted top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
+${weightedSims.map(sim => {
+                        return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
+                    }).join('\n')}`);
+
                 }
-
-                logMessage(`<#${this.threadId}> removed prompts:`, userPrompts.slice(0, numPromptsToRemove));
-
-                // truncate parts of earlier history...
-                newHistory = allPrompts.slice(0, 3)
-                    .concat(userPrompts.slice(numPromptsToRemove))
-                    .join(END_OF_PROMPT);
-            }
-
-
-            try {
-                const maxTokens = ModelInfo[this.model].MAX_TOKENS_PER_MESSAGE;
 
                 response = await openai.createCompletion({
                     model: this.model,
-                    prompt: newHistory,
+                    prompt,
                     temperature: 0.8,
                     max_tokens: maxTokens,
                     top_p: 0.9,
@@ -199,6 +296,7 @@ ${this.username}:`;
                     response = e.response;
                 } else {
                     logMessage('Unhandled error:', e);
+                    finished = true;
                 }
             }
 
@@ -226,6 +324,7 @@ ${this.username}:`;
                 const choices = response.data.choices;
                 if (choices.length !== 1) {
                     logMessage('Not enough choices?!');
+                    finished = true;
 
                     return null;
                 }
@@ -234,36 +333,35 @@ ${this.username}:`;
 
                 const text = choice.text;
 
-                newHistory += text;
-                result += text;
+                logMessage(`Response:${text}`)
+
+                completeResponseText += text;
 
                 if (text == undefined) {
                     logMessage('No text?!');
+                    finished = true;
+
                     return null;
                 }
 
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    newHistory += END_OF_TEXT;
+                    const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText, this.makeEmbeddings);
+                    this.messageHistory.push(responseMessage);
 
-                    this.currentHistory = newHistory;
-
-                    logMessage(`<#${this.threadId}> response: ${result}`);
-
-                    this.allHistory += newPromptText + result + END_OF_TEXT;
-                    this.numPrompts++;
+                    logMessage(`<#${this.threadId}> response: ${completeResponseText}`);
 
                     await this.persist();
 
                     if (onProgress) {
-                        onProgress(result, true);
+                        onProgress(completeResponseText, true);
                     }
 
-                    return result;
+                    return completeResponseText;
                 } else {
                     if (onProgress) {
-                        onProgress(result, false);
+                        onProgress(completeResponseText, false);
                     }
 
                     finished = false;
@@ -312,13 +410,137 @@ ${this.username}:`;
 
         if (inputValue === '<DEBUG>') {
             const {lastUpdated} = this;
-            const debugInfo = {lastUpdated};
+            const totalTokens = this.messageHistory.reduce((sum, item) => sum + item.numTokens, 0);
+            const numMessages = this.messageHistory.length;
+            const debugInfo = {lastUpdated, numMessages, totalTokens};
             const debugMessage = `Debug: 
 \`\`\`json
 ${JSON.stringify(debugInfo, null, '  ')}
 \`\`\``;
 
             await trySendingMessage(channel, {content: debugMessage}, messageToReplyTo);
+
+            return;
+        }
+
+        const deletePrefix = '<DELETE>';
+        if (inputValue.startsWith(deletePrefix)) {
+            let rest = inputValue.slice(deletePrefix.length);
+
+            let toDelete = 1;
+            const param = parseInt(rest);
+            if (!isNaN(param)) {
+                toDelete = param;
+            }
+
+            const deleted = this.messageHistory.splice(this.messageHistory.length - toDelete);
+
+            await trySendingMessage(channel, {
+                content: `Deleted: \n${deleted.map(item => messageToPromptPart(item)).join('\n')}`,
+            });
+
+            return;
+        }
+
+        const historyPrefix = '<HISTORY>';
+        if (inputValue.startsWith(historyPrefix)) {
+            let rest = inputValue.slice(historyPrefix.length);
+
+            let toShow = 1;
+            const param = parseInt(rest);
+            if (!isNaN(param)) {
+                toShow = param;
+            }
+
+            const history = this.messageHistory.slice(this.messageHistory.length - toShow);
+            const response = `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`;
+
+            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
+
+            return;
+        }
+
+        const queryPrefix = '<QUERY>';
+        if (this.makeEmbeddings && inputValue.startsWith(queryPrefix)) {
+            await channel.sendTyping();
+
+            let rest = inputValue.slice(queryPrefix.length);
+
+            const firstCommaIndex = rest.indexOf(',');
+            if (firstCommaIndex == -1) {
+                await trySendingMessage(channel, {
+                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE`,
+                });
+
+                return;
+            }
+
+            const firstParam = rest.slice(0, firstCommaIndex).trim();
+            const restPrompt = rest.slice(firstCommaIndex + 1).trimStart();
+
+            const weight = parseFloat(firstParam);
+            if (isNaN(weight) || weight < 0 || weight > 1) {
+                await trySendingMessage(channel, {
+                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE\nERROR: time-weight value is not a number between 0 and 1!`,
+                });
+                return;
+            }
+
+            function calculateUpdateScore(lastUpdate: number) {
+                const currentTime = new Date().getTime();
+                const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
+                const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
+                const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
+                const score = 1 / (1 + hoursSinceLastUpdate);
+                return score;
+            }
+
+            const embeddingResponse = await openai.createEmbedding({
+                user: user.id,
+                input: restPrompt,
+                model: 'text-embedding-ada-002',
+            });
+
+            const embedding = embeddingResponse.data.data;
+
+            const updateWeight = weight;
+            const embeddingWeight = 1 - updateWeight;
+
+            const rawSimilarities = this.messageHistory
+                .map((item, index) => {
+                    const updateScore = 1 / (this.messageHistory.length - index);
+
+                    if (item.embedding && item.embedding.length > 0) {
+                        const similarityValue = similarity(embedding[0].embedding, item.embedding![0].embedding);
+
+                        return {
+                            item,
+                            similarity: similarityValue,
+                            updateScore: updateScore,
+                            weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
+                        }
+                    }
+
+                    return {
+                        item,
+                        similarity: 0,
+                        weighted: 0,
+                        updateScore: 0,
+                    }
+                });
+
+            const weightedSims = rawSimilarities
+                .sort((a, b) => b.weighted - a.weighted)
+                .slice(0, 20);
+
+            const response = `
+QUERY: [${weight}, ${restPrompt}]            
+Weighted top 20:
+${weightedSims.map(sim => {
+                return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
+            }).join('\n')}`;
+
+            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
 
             return;
         }
@@ -350,10 +572,13 @@ ${JSON.stringify(debugInfo, null, '  ')}
         return this.isDirectMessage ? user.username : await getGuildName(this.guildId);
     }
 
-    static async initialise(callback: (info: ChatGPTConversation) => Promise<void>) {
+    static async initialiseAll() {
         const results = await db.find({
             key: {$regex: /^THREAD-/},
             $and: [
+                {
+                    "value.version": ChatGPTConversation.latestVersion,
+                },
                 {
                     $or: [
                         {
@@ -379,7 +604,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
             ],
         }).toArray();
 
-        logMessage(`Found ${results.length} number of threads to check.`)
+        logMessage(`Found ${results.length} number of version 2 threads to check.`)
 
         await Promise.all(results.map(async result => {
             const fromDb = result.value as ChatGPTConversation;
@@ -387,7 +612,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
             if (info != null) {
                 try {
-                    await callback(info);
+                    await info.initialise();
                 } catch (e) {
                     logMessage('Failed to initialise info with thread is ', info.threadId, e);
                 }
@@ -395,5 +620,90 @@ ${JSON.stringify(debugInfo, null, '  ')}
         }));
 
         logMessage('Initialisation complete.');
+    }
+
+    static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
+        logMessage(`trying to convert <#${fromDb.threadId}>(${fromDb.threadId})!`);
+
+        try {
+            const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
+
+            let promptStart = 0;
+            for (let i = 0; i < promptSplit.length; ++i) {
+                const promptPart = promptSplit[i];
+                if (promptPart.trim().endsWith('Generate only one response per prompt.')) {
+                    promptStart = i + 1;
+                    break;
+                }
+            }
+
+            const actualConversation = promptSplit.slice(promptStart);
+
+            const history: MessageHistoryItem[] = [];
+
+            for (let string of actualConversation) {
+                const originalRegex = /\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/;
+                const newRegex = new RegExp(originalRegex.source.replace('GPT-Shell', sanitiseStringForRegex(fromDb.username)));
+                const match = string
+                    .match(newRegex)
+
+                if (!match || !match.groups) {
+                    throw new Error('No match!');
+                }
+
+                const {prompt, response, userId, username} = match.groups;
+
+                if (!response && !prompt) {
+                    logMessage({string, newRegex: newRegex.source});
+                    throw new Error('Something wrong with the string, no prompt or response');
+                }
+
+                if (response) {
+                    history.push({
+                        type: 'response',
+                        content: response.trimStart(),
+                        numTokens: encodeLength(response),
+                        embedding: null,
+                        timestamp: undefined,
+                        username: fromDb.username,
+                    });
+                }
+
+                if (prompt) {
+                    history.push({
+                        type: 'human',
+                        username: username,
+                        userId: userId,
+                        content: prompt,
+                        numTokens: encodeLength(prompt),
+                        embedding: null,
+                        timestamp: undefined,
+                    })
+                }
+            }
+
+            const result: ChatGPTConversation = new ChatGPTConversation(
+                fromDb.threadId,
+                fromDb.creatorId,
+                fromDb.guildId,
+                fromDb.username,
+                fromDb.model,
+            );
+
+            result.messageHistory = history;
+            result.makeEmbeddings = false;
+            result.deleted = false;
+            result.isDirectMessage = fromDb.isDirectMessage;
+            result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
+            result.lastUpdated = fromDb.lastUpdated;
+
+            logMessage(`managed to convert <#${result.threadId}>!`);
+
+            return result;
+        } catch (e) {
+            const adminPingId = getEnv('ADMIN_PING_ID')
+            logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not upgrade conversation... ${fromDb.threadId} <#${fromDb.threadId}>`, e);
+            return null;
+        }
     }
 }

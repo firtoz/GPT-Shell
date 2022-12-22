@@ -31,11 +31,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/pnpapi", "npm:0.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
+            ["compute-cosine-similarity", "npm:1.0.0"],\
             ["cross-env", "npm:7.0.3"],\
             ["discord-interactions", "npm:3.2.0"],\
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt-3-encoder", "npm:1.1.3"],\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
@@ -1594,6 +1596,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["array-keyed-map", [\
+        ["npm:2.1.3", {\
+          "packageLocation": "./.yarn/cache/array-keyed-map-npm-2.1.3-c96c9dd286-53b4567192.zip/node_modules/array-keyed-map/",\
+          "packageDependencies": [\
+            ["array-keyed-map", "npm:2.1.3"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["assertion-error", [\
         ["npm:1.1.0", {\
           "packageLocation": "./.yarn/cache/assertion-error-npm-1.1.0-66b893015e-fd9429d3a3.zip/node_modules/assertion-error/",\
@@ -1839,6 +1850,41 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["combined-stream", "npm:1.0.8"],\
             ["delayed-stream", "npm:1.0.0"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["compute-cosine-similarity", [\
+        ["npm:1.0.0", {\
+          "packageLocation": "./.yarn/cache/compute-cosine-similarity-npm-1.0.0-d12fb9c31a-274532b462.zip/node_modules/compute-cosine-similarity/",\
+          "packageDependencies": [\
+            ["compute-cosine-similarity", "npm:1.0.0"],\
+            ["compute-dot", "npm:1.1.0"],\
+            ["compute-l2norm", "npm:1.1.0"],\
+            ["validate.io-array", "npm:1.0.6"],\
+            ["validate.io-function", "npm:1.0.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["compute-dot", [\
+        ["npm:1.1.0", {\
+          "packageLocation": "./.yarn/cache/compute-dot-npm-1.1.0-ed7fbf43d8-390ccbc64a.zip/node_modules/compute-dot/",\
+          "packageDependencies": [\
+            ["compute-dot", "npm:1.1.0"],\
+            ["validate.io-array", "npm:1.0.6"],\
+            ["validate.io-function", "npm:1.0.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["compute-l2norm", [\
+        ["npm:1.1.0", {\
+          "packageLocation": "./.yarn/cache/compute-l2norm-npm-1.1.0-81a48becc4-58da02a696.zip/node_modules/compute-l2norm/",\
+          "packageDependencies": [\
+            ["compute-l2norm", "npm:1.1.0"],\
+            ["validate.io-array", "npm:1.0.6"],\
+            ["validate.io-function", "npm:1.0.2"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -2290,6 +2336,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/gpt-3-encoder-npm-1.1.3-0457477e1b-98efa67a8f.zip/node_modules/gpt-3-encoder/",\
           "packageDependencies": [\
             ["gpt-3-encoder", "npm:1.1.3"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["gpt3-tokenizer", [\
+        ["npm:1.1.4", {\
+          "packageLocation": "./.yarn/cache/gpt3-tokenizer-npm-1.1.4-bdac17ac1f-4606dc27d8.zip/node_modules/gpt3-tokenizer/",\
+          "packageDependencies": [\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
+            ["array-keyed-map", "npm:2.1.3"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -2997,11 +3053,13 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/pnpapi", "npm:0.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
+            ["compute-cosine-similarity", "npm:1.0.0"],\
             ["cross-env", "npm:7.0.3"],\
             ["discord-interactions", "npm:3.2.0"],\
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt-3-encoder", "npm:1.1.3"],\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
@@ -3806,6 +3864,24 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/v8-compile-cache-lib-npm-3.0.1-4886071ece-78089ad549.zip/node_modules/v8-compile-cache-lib/",\
           "packageDependencies": [\
             ["v8-compile-cache-lib", "npm:3.0.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["validate.io-array", [\
+        ["npm:1.0.6", {\
+          "packageLocation": "./.yarn/cache/validate.io-array-npm-1.0.6-d265c3d6a6-54eca83ebc.zip/node_modules/validate.io-array/",\
+          "packageDependencies": [\
+            ["validate.io-array", "npm:1.0.6"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["validate.io-function", [\
+        ["npm:1.0.2", {\
+          "packageLocation": "./.yarn/cache/validate.io-function-npm-1.0.2-06c17f312a-e4cce2479a.zip/node_modules/validate.io-function/",\
+          "packageDependencies": [\
+            ["validate.io-function", "npm:1.0.2"]\
           ],\
           "linkType": "HARD"\
         }]\

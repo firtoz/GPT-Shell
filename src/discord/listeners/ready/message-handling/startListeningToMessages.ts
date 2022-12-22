@@ -1,7 +1,8 @@
 import {Client, Events, Message} from "discord.js";
 import {handleThread} from "./handleThread";
 import {handleDirectMessage} from "./handleDirectMessage";
-import {handleChannelMessage} from "./handleChannelMessage";
+import {BaseConversation} from "../../../../core/BaseConversation";
+import {ConversationFactory} from "../../../../core/ConversationFactory";
 
 
 export function StartListeningToMessages(client: Client<boolean>) {
@@ -46,7 +47,7 @@ export function StartListeningToMessages(client: Client<boolean>) {
         }
 
         if (!channel.isThread()) {
-            await handleChannelMessage(channelId, message, currentBotId, channel);
+            await ConversationFactory.handleChannelMessage(channelId, message, currentBotId, channel);
 
             return;
         }

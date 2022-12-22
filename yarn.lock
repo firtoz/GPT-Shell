@@ -1365,6 +1365,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"array-keyed-map@npm:^2.1.2":
+  version: 2.1.3
+  resolution: "array-keyed-map@npm:2.1.3"
+  checksum: 53b45671922bbe7a7eb34950887fd4b1ba4154b0e0002523efa8fb352b320aaa6f798e4d7af151fc8dd4f3365996974f40f141e201d9aae90ea8b3383daf98f8
+  languageName: node
+  linkType: hard
+
 "assertion-error@npm:^1.1.0":
   version: 1.1.0
   resolution: "assertion-error@npm:1.1.0"
@@ -1586,6 +1593,38 @@ __metadata:
   dependencies:
     delayed-stream: ~1.0.0
   checksum: 49fa4aeb4916567e33ea81d088f6584749fc90c7abec76fd516bf1c5aa5c79f3584b5ba3de6b86d26ddd64bae5329c4c7479343250cfe71c75bb366eae53bb7c
+  languageName: node
+  linkType: hard
+
+"compute-cosine-similarity@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "compute-cosine-similarity@npm:1.0.0"
+  dependencies:
+    compute-dot: ^1.1.0
+    compute-l2norm: ^1.1.0
+    validate.io-array: ^1.0.5
+    validate.io-function: ^1.0.2
+  checksum: 274532b4627245a35b03a6083821147de71a63dc391c0746be1a518914caedadd76244bcd50358d1b6d7d5ca3ddd6773d987be7a7c77fa4d838299ef822f6219
+  languageName: node
+  linkType: hard
+
+"compute-dot@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "compute-dot@npm:1.1.0"
+  dependencies:
+    validate.io-array: ^1.0.3
+    validate.io-function: ^1.0.2
+  checksum: 390ccbc64ae8204c147613b4ac11f0407cd05ab430b7cf11a92c80ab6f8bcd100fc7fb7a4d3fc83e4513a33e036f7e8ef71cf932420772b1256019771f2933e1
+  languageName: node
+  linkType: hard
+
+"compute-l2norm@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "compute-l2norm@npm:1.1.0"
+  dependencies:
+    validate.io-array: ^1.0.3
+    validate.io-function: ^1.0.2
+  checksum: 58da02a6965787f5aacf50fda78f3bb69ff1fbf453fa32500aacb078e20eeb87dbe0c32bcc276c4e307c0b76b6e518509a762aca9520dd67179773903c7567cc
   languageName: node
   linkType: hard
 
@@ -2014,6 +2053,15 @@ __metadata:
   version: 1.1.3
   resolution: "gpt-3-encoder@npm:1.1.3"
   checksum: 98efa67a8fcaadb2a6e9471c2ae0a39fe2ac8e71b380b84f88f3c729bca1a7217beaf9c8985654a03edba6001db538b11d400c0e1c543c6801299d80a8306674
+  languageName: node
+  linkType: hard
+
+"gpt3-tokenizer@npm:^1.1.4":
+  version: 1.1.4
+  resolution: "gpt3-tokenizer@npm:1.1.4"
+  dependencies:
+    array-keyed-map: ^2.1.2
+  checksum: 4606dc27d81ceee907d239a90f6ef8d9735a2a57d7316c1f01d0e2cea72d9c520b0b4ae68eb31be3d2f6b6aa333e8581483b97559ee4ef2a9b7e787077b78eec
   languageName: node
   linkType: hard
 
@@ -2641,11 +2689,13 @@ __metadata:
     "@types/pnpapi": ^0
     "@types/uuid": ^9
     axios: 1.1.3
+    compute-cosine-similarity: ^1.0.0
     cross-env: ^7.0.3
     discord-interactions: ^3.2.0
     discord.js: ^14.7.1
     dotenv: ^16.0.3
     gpt-3-encoder: ^1.1.3
+    gpt3-tokenizer: ^1.1.4
     mongodb: ^4.12.1
     nodemon: ^2.0.20
     openai: ^3.1.0
@@ -3366,6 +3416,20 @@ __metadata:
   version: 3.0.1
   resolution: "v8-compile-cache-lib@npm:3.0.1"
   checksum: 78089ad549e21bcdbfca10c08850022b22024cdcc2da9b168bcf5a73a6ed7bf01a9cebb9eac28e03cd23a684d81e0502797e88f3ccd27a32aeab1cfc44c39da0
+  languageName: node
+  linkType: hard
+
+"validate.io-array@npm:^1.0.3, validate.io-array@npm:^1.0.5":
+  version: 1.0.6
+  resolution: "validate.io-array@npm:1.0.6"
+  checksum: 54eca83ebc702e3e46499f9d9e77287a95ae25c4e727cd2fafee29c7333b3a36cca0c5d8f090b9406262786de80750fba85e7e7ef41e20bf8cc67d5570de449b
+  languageName: node
+  linkType: hard
+
+"validate.io-function@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "validate.io-function@npm:1.0.2"
+  checksum: e4cce2479a20cb7c42e8630c777fb107059c27bc32925f769e3a73ca5fd62b4892d897b3c80227e14d5fcd1c5b7d05544e0579d63e59f14034c0052cda7f7c44
   languageName: node
   linkType: hard
 

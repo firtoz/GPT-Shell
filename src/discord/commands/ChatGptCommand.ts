@@ -4,13 +4,12 @@ import {
     ApplicationCommandOptionType,
     ApplicationCommandType,
     Client,
-    CommandInteraction,
-    EmbedType,
+    CommandInteraction, EmbedBuilder,
+    EmbedType, Message,
     ThreadAutoArchiveDuration
 } from "discord.js";
 import {Command} from "../Command";
 import {getEnv} from "../../utils/GetEnv";
-import {ChatGPTConversation} from "../../core/ChatGPTConversation";
 import {logMessage} from "../../utils/logMessage";
 import {discordClient, getGuildName} from "../discordClient";
 import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
@@ -18,6 +17,8 @@ import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
 import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
 import {trySendingMessage} from "../../core/TrySendingMessage";
+import {BaseConversation} from "../../core/BaseConversation";
+import {ConversationFactory} from "../../core/ConversationFactory";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -67,13 +68,9 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
     const user = interaction.user;
     const userId = user.id;
     const firstMessage = `${value ? `<@${userId}>: ${value}` : `Chat with <@${userId}>`}`;
-    const message = await interaction.followUp({
-        options: {
-            username: user.username,
-            avatarURL: user.avatarURL() ?? '',
-        },
-        content: firstMessage,
-    });
+    if (!interaction.channel) {
+        await discordClient.channels.fetch(interaction.channelId);
+    }
 
     const inputValue = inputOption?.value as string | undefined;
 
@@ -82,12 +79,67 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     let thread: AnyThreadChannel;
 
+    let message: Message;
+
+    const channel = interaction.channel;
+
+    const embeds = [
+        new EmbedBuilder()
+            .setAuthor({
+                name: user.username,
+                iconURL: user.avatarURL() ?? undefined,
+            })
+            .setDescription(firstMessage),
+    ];
+
+    let referenceThreadHere: Message | null = null;
+
+    if (channel?.isThread()) {
+        referenceThreadHere = await interaction.followUp({
+            options: {
+                username: user.username,
+                avatarURL: user.avatarURL() ?? '',
+            },
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('Creating new thread in channel...'),
+            ]
+        });
+
+        const starterMessage = await channel.fetchStarterMessage();
+
+        if (starterMessage != null) {
+            message = await starterMessage.reply({
+                content: `Thread spun off from <#${channel.id}>: `,
+                embeds
+            });
+        } else {
+            message = await channel.send({
+                content: `Thread spun off from <#${channel.id}>: `,
+                embeds,
+            });
+        }
+    } else {
+        message = await interaction.followUp({
+            embeds,
+        })
+    }
+
     try {
         thread = await message.startThread({
             name: threadName,
             reason: 'ChatGPT',
             autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
         });
+
+        if (referenceThreadHere != null) {
+            await referenceThreadHere.edit({
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`Created spinoff: <#${thread.id}>.`)
+                ]
+            })
+        }
     } catch (e) {
         try {
             await interaction.followUp('Could not create thread... Please ask an admin for permissions!');
@@ -98,14 +150,15 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    const threadInfo = new ChatGPTConversation(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
+    const conversation = ConversationFactory.create(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
 
-    await threadInfo.persist();
+    await conversation.persist();
 
-    logMessage(`New thread by <@${threadInfo.creatorId}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${threadInfo.threadId}>.`);
+    // TODO use conversation debug name here
+    logMessage(`New thread by <@${user.id}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${conversation.threadId}>.`);
 
     if (inputValue != null) {
-        await threadInfo.handlePrompt(
+        await conversation.handlePrompt(
             user,
             thread,
             inputValue

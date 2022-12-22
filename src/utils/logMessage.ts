@@ -45,6 +45,14 @@ function getLogChannel(): Promise<TextBasedChannel | null> {
 function stringify(obj: any) {
     const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
+        if (value instanceof Error) {
+            return `<ERROR ${value.name}> (cause: "${value.cause}"): message:"${value.message}": ${value.stack}`;
+        }
+
+        if(value instanceof RegExp) {
+            return `<REGEX: ${value.source}>`
+        }
+
         if (typeof value === 'object' && value !== null) {
             if (seen.has(value)) {
                 // Replace circular reference with a placeholder value
@@ -94,33 +102,34 @@ async function clearMessageQueue(logChannel: TextBasedChannel) {
     messagePromise = null;
 }
 
-export async function logMessage(...args: any[]): Promise<void> {
+export function logMessage(...args: any[]): void {
     console.error(...args);
 
-    const logChannel = await getLogChannel();
+    getLogChannel()
+        .then(logChannel => {
+            if (!logChannel) {
+                return;
+            }
 
-    if (!logChannel) {
-        return;
-    }
+            const messageToPrint = args.map(arg => {
+                const printed = printArg(arg);
 
-    const messageToPrint = args.map(arg => {
-        const printed = printArg(arg);
+                if (printed.length > 10000) {
+                    return printed.slice(0, 10000) + '...';
+                }
 
-        if (printed.length > 5000) {
-            return printed.slice(0, 5000) + '...';
-        }
+                return printed;
+            }).join('\n');
 
-        return printed;
-    }).join('\n');
+            messageQueue.push(`[${new Date().toLocaleString('default', {
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            })}] ${messageToPrint}`);
 
-    messageQueue.push(`[${new Date().toLocaleString('default', {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-    })}] ${messageToPrint}`);
-
-    if (!messagePromise) {
-        messagePromise = clearMessageQueue(logChannel);
-    }
+            if (!messagePromise) {
+                messagePromise = clearMessageQueue(logChannel);
+            }
+        })
 }

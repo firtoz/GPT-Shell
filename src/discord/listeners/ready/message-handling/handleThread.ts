@@ -1,5 +1,5 @@
 import {AnyThreadChannel, Message} from "discord.js";
-import {ChatGPTConversation} from "../../../../core/ChatGPTConversation";
+import {retrieveConversation} from "../../../../core/RetrieveConversation";
 
 export const messageReceivedInThread: Record<string, undefined | true> = {};
 
@@ -8,7 +8,7 @@ export async function handleThread(
     message: Message<boolean>,
     channel: AnyThreadChannel<true>
 ) {
-    const info = await ChatGPTConversation.retrieve(channelId);
+    const info = await retrieveConversation(channelId);
     if (info === null) {
         return;
     }

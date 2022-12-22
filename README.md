@@ -39,6 +39,9 @@ Yarn: https://nodejs.org/en/ (after installing nodejs)
 
 To use GPT-Shell, you will need to:
 - Clone the project
+- Open the terminal in the project's folder 
+  - (in windows, right click somewhere in the folder and select "Open In Terminal")
+  - if you see something about powershell, type `cmd` and hit enter, to go to the simpler command line terminal.
 - Run `yarn install`
 
 You can also fork the replit:
