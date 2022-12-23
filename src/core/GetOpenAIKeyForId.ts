@@ -14,11 +14,17 @@ if (!MAIN_SERVER_ID) {
     throw new Error('Need MAIN_SERVER_ID env variable.');
 }
 
+const USE_SAME_API_KEY_FOR_ALL = getEnv('USE_SAME_API_KEY_FOR_ALL');
+
 OpenAICache[MAIN_SERVER_ID] = new OpenAIApi(new Configuration({
     apiKey: OPENAI_API_KEY,
 }));
 
 export async function getOpenAIKeyForId(id: string) {
+    if (USE_SAME_API_KEY_FOR_ALL === 'true') {
+        return OpenAICache[MAIN_SERVER_ID!];
+    }
+
     if (OpenAICache[id] === undefined) {
         const apiKey = await db.get<string>(`CONFIG-API-KEY-${id}`);
         if (apiKey !== null) {
