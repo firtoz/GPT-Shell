@@ -57,14 +57,14 @@ Then to start a development environment, run `yarn dev`. To build and run, run `
 The following environment variables are required for GPT-Shell to work properly.
 
 MongoDB:
-- MONGODB_URI: The MongoDB connection string. 
-  - Should look something like this: `mongodb+srv://<username>:<password><cluster>.<something>.mongodb.net/?retryWrites=true&w=majority`
+- MONGODB_URI: The MongoDB connection string.
+  - Should look something like this: mongodb+srv://<username>:<password><cluster>.<something>.mongodb.net/?retryWrites=true&w=majority
 - DB_NAME: The name of the collection in MongoDB
 
 Bot Token:
 - BOT_TOKEN: The Discord bot token
   - You can get it by following https://discord.com/developers/applications then selecting your app and then selecting
-  "Bot".
+    "Bot".
 
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
@@ -76,11 +76,11 @@ OpenAI API Key:
 Discord Server Details:
 - MAIN_SERVER_ID: The Discord server where the bot lives
 - LOG_CHANNEL_ID: (Optional) The channel for log messages
-- MAIN_SERVER_INVITE: (Optional) The ideally non-expiring server invite link (if you want users to add the bot to their 
-server)
+- MAIN_SERVER_INVITE: (Optional) The ideally non-expiring server invite link (if you want users to add the bot to their
+  server)
+- USE_SAME_API_KEY_FOR_ALL: (Optional) When set to 'true', it will allow any server or user to use the bot without needing to provide their own API keys.
 
-
-You can set the environment variables in any way you like, or place an `.env.local` file at the root of your project,
+You can set the environment variables in any way you like, or place an .env.local file at the root of your project,
 next to `package.json`, that looks like this:
 
 ```
@@ -102,6 +102,7 @@ OPENAI_API_KEY=
 MAIN_SERVER_ID=
 LOG_CHANNEL_ID=
 MAIN_SERVER_INVITE=
+USE_SAME_API_KEY_FOR_ALL=
 ```
 
 ## Contributions
