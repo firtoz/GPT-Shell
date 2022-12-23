@@ -3,19 +3,15 @@ import {logMessage} from "../utils/logMessage";
 import {
     Collection,
     DiscordAPIError,
-    DMChannel,
     Guild,
     GuildBasedChannel,
-    GuildTextBasedChannel,
     Message,
     TextBasedChannel,
     User
 } from "discord.js";
 import {discordClient} from "../discord/discordClient";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
-import {ModelName} from "./ModelInfo";
 import {conversationCache} from "./ConversationCache";
-import {retrieveConversation} from "./RetrieveConversation";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
 
@@ -29,6 +25,14 @@ type GetThreadResponse = {
     status: number;
     error: any,
 };
+
+function createChannelLink(threadId: string) {
+    return `<#${threadId}> |${threadId}`;
+}
+
+function createUserLink(creatorId: string) {
+    return `<@${creatorId}> |${creatorId}`;
+}
 
 export abstract class BaseConversation {
     public isDirectMessage: boolean = false;
@@ -61,8 +65,12 @@ export abstract class BaseConversation {
     ): Promise<void>;
 
     async tryGetThread(server: Guild): Promise<GetThreadResponse> {
+        return await BaseConversation.TryGetThread(server, this.threadId);
+    }
+
+    static async TryGetThread(server: Guild, threadId: string): Promise<GetThreadResponse> {
         try {
-            const result = await server.channels.fetch(this.threadId);
+            const result = await server.channels.fetch(threadId);
             if (result == null) {
                 return {
                     success: false,
@@ -107,8 +115,38 @@ export abstract class BaseConversation {
         }
     }
 
+    public async getLinkableId(): Promise<string> {
+        return BaseConversation.GetLinkableId(this);
+    }
+
+    protected static async GetLinkableId(conversation: BaseConversation) {
+        let location = '';
+        if (conversation.isDirectMessage) {
+            const creatorId = conversation.creatorId;
+            const user = await discordClient.users.fetch(creatorId);
+            if (user) {
+                location = `[[DM with [${user.username}|${createUserLink(creatorId)}]]`
+            } else {
+                location = `[[DM with [${createUserLink(creatorId)}]]]`
+            }
+        } else {
+            const guild = await discordClient.guilds.fetch(conversation.guildId);
+            const threadId = conversation.threadId;
+            const channelLink = createChannelLink(threadId);
+
+            if(guild) {
+                location = `[[THREAD [${guild.name}][${channelLink}]]]`
+            } else {
+                location = `[[THREAD [${conversation.guildId}][${channelLink}]]]`
+            }
+        }
+
+        return location;
+    }
+
+
     public async initialise(): Promise<void> {
-        logMessage(`Initialising conversation: <#${this.threadId}>.`);
+        logMessage(`Initialising conversation: ${await this.getLinkableId()}.`);
 
         const currentBotId = discordClient.user!.id;
 
@@ -198,10 +236,10 @@ I will respond to this message now.]]`
         const threadResponse = await this.tryGetThread(server);
 
         if (!threadResponse.success) {
-            logMessage(`${this.threadId} <#${this.threadId}>: Failed to get thread, status: ${threadResponse.status}`);
+            logMessage(`${await this.getLinkableId()}: Failed to get thread, status: ${threadResponse.status}`);
 
             if (threadResponse.status === 404) {
-                logMessage(`Thread ${this.threadId} <#${this.threadId}> deleted (or never existed)! Marking as deleted...`);
+                logMessage(`Thread ${await this.getLinkableId()} deleted (or never existed)! Marking as deleted...`);
                 this.deleted = true;
                 await this.persist();
 
@@ -215,7 +253,7 @@ I will respond to this message now.]]`
         const thread = threadResponse.thread;
 
         if (thread == null) {
-            logMessage(`Thread <#${this.threadId}> deleted, ignoring.`);
+            logMessage(`Thread ${await this.getLinkableId()} deleted, ignoring.`);
             return;
         }
 
@@ -238,7 +276,7 @@ I will respond to this message now.]]`
         const newMessages = Array.from(newMessagesCollection.values());
         newMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 
-        logMessage(`Thread [${thread.guild.name}] <#${this.threadId}> new messages: ${newMessages.length}.`);
+        logMessage(`${await this.getLinkableId()} new messages: ${newMessages.length}.`);
 
         if (newMessages.length === 0) {
             console.log('No new messages, ignoring.');
@@ -263,7 +301,7 @@ I will respond to this message now.]]`
             this.lastDiscordMessageId = newMessages[newMessages.length - 1].id;
 
             if (lastRelevantMessage != null) {
-                logMessage(`Found message for thread: <#${this.threadId}>`, lastRelevantMessage.content);
+                logMessage(`Found message for ${await this.getLinkableId()}`, lastRelevantMessage.content);
 
                 if (!messageReceivedInThread[this.threadId]) {
                     await trySendingMessage(thread, {
@@ -274,7 +312,7 @@ I will respond to this message now.]]`
                     this.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
                         .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
                 } else {
-                    logMessage(`A new message is being handled for <#${this.threadId}> already, no need to respond.`);
+                    logMessage(`A new message is being handled for ${await this.getLinkableId()} already, no need to respond.`);
                 }
             }
 
@@ -291,7 +329,7 @@ I will respond to this message now.]]`
         }
 
         if (lastRelevantMessage != null) {
-            logMessage(`Found message for thread: <#${this.threadId}>`, lastRelevantMessage.content);
+            logMessage(`Found message for ${await this.getLinkableId()}`, lastRelevantMessage.content);
 
             if (!messageReceivedInThread[this.threadId]) {
                 await trySendingMessage(thread, {
@@ -302,10 +340,10 @@ I will respond to your last prompt now.]]`,
                 this.handlePrompt(lastRelevantMessage.author, thread, lastRelevantMessage.content, lastRelevantMessage)
                     .catch(e => logMessage('INITIALIZEThreads', 'failed to handle prompt...', e));
             } else {
-                logMessage(`A new message is being handled for <#${this.threadId}> already, no need to respond.`);
+                logMessage(`A new message is being handled for ${await this.getLinkableId()} already, no need to respond.`);
             }
         } else {
-            logMessage(`Found no messages from user for thread: <#${this.threadId}>`);
+            logMessage(`Found no messages from user for thread: ${await this.getLinkableId()}`);
         }
         this.lastDiscordMessageId = newMessages[newMessages.length - 1].id;
         await this.persist();

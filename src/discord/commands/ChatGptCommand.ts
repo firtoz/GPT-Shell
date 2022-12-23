@@ -154,8 +154,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     await conversation.persist();
 
-    // TODO use conversation debug name here
-    logMessage(`New thread by <@${user.id}> in [${interaction.guild?.name ?? 'Unknown Server'}]: <#${conversation.threadId}>.`);
+    logMessage(`New thread by <@${user.id}> in ${await conversation.getLinkableId()}.`);
 
     if (inputValue != null) {
         await conversation.handlePrompt(

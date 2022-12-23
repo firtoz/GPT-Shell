@@ -52,7 +52,7 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
         let updatingPrompts = fromDb.numPrompts === undefined;
         if (updatingPrompts) {
             fromDb.numPrompts = fromDb.allHistory.split(END_OF_PROMPT).slice(3).length;
-            logMessage(`<#${fromDb.threadId}>: ${fromDb.numPrompts} prompts.`);
+            logMessage(`${await BaseConversation.GetLinkableId(fromDb)}: ${fromDb.numPrompts} prompts.`);
         }
 
         const result = new ChatGPTConversationVersion0(threadId, fromDb.creatorId, fromDb.guildId, fromDb.username, fromDb.model ?? 'text-davinci-003');
@@ -93,7 +93,7 @@ ${this.username}:`;
                 let totalTokens = 0;
 
                 const tokensToRemove = newHistoryTokens - maxallowedtokens;
-                logMessage(`<#${this.threadId}> need to remove tokens...`, {
+                logMessage(`${await this.getLinkableId()} need to remove tokens...`, {
                     total: newHistoryTokens,
                     maxallowedtokens,
                     tokensToRemove,
@@ -108,7 +108,7 @@ ${this.username}:`;
                     }
                 }
 
-                logMessage(`<#${this.threadId}> removed prompts:`, userPrompts.slice(0, numPromptsToRemove));
+                logMessage(`${await this.getLinkableId()} removed prompts:`, userPrompts.slice(0, numPromptsToRemove));
 
                 // truncate parts of earlier history...
                 newHistory = allPrompts.slice(0, 3)
@@ -188,7 +188,7 @@ ${this.username}:`;
 
                     this.currentHistory = newHistory;
 
-                    logMessage(`<#${this.threadId}> response: ${result}`);
+                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${result}`);
 
                     this.allHistory += newPromptText + result + END_OF_TEXT;
                     this.numPrompts++;
@@ -221,7 +221,7 @@ ${this.username}:`;
     ): Promise<void> {
         let openai: OpenAIApi | undefined;
 
-        logMessage(`New prompt by [${user.username}] in [${await this.getDebugName(user)}|<#${channel.id}>]: ${inputValue}`);
+        logMessage(`PROMPT: by [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
         if (this.isDirectMessage) {
             openai = await getOpenAIKeyForId(user.id);

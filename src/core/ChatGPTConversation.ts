@@ -20,6 +20,10 @@ import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
 
+type HistoryConfig = {
+    maxAllowed: number;
+}
+
 function sanitiseStringForRegex(input: string) {
     return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
 }
@@ -290,8 +294,6 @@ ${weightedSims.map(sim => {
 
                 const text = choice.text;
 
-                logMessage(`Response:${text}`)
-
                 completeResponseText += text;
 
                 if (text == undefined) {
@@ -307,7 +309,7 @@ ${weightedSims.map(sim => {
                     const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText, this.makeEmbeddings);
                     this.messageHistory.push(responseMessage);
 
-                    logMessage(`<#${this.threadId}> response: ${completeResponseText}`);
+                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${completeResponseText}`);
 
                     await this.persist();
 
@@ -337,7 +339,7 @@ ${weightedSims.map(sim => {
     ): Promise<void> {
         let openai: OpenAIApi | undefined;
 
-        logMessage(`New prompt by [${user.username}] in [${await this.getDebugName(user)}|<#${channel.id}>]: ${inputValue}`);
+        logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
         if (this.isDirectMessage) {
             openai = await getOpenAIKeyForId(user.id);
@@ -401,12 +403,20 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
         const historyPrefix = '<HISTORY>';
         if (inputValue.startsWith(historyPrefix)) {
+            const historyConfig = await db.get<HistoryConfig>(`HISTORY-CONFIG-${user.id}`);
+
+            if (!historyConfig) {
+                await new MultiMessage(channel, undefined, messageToReplyTo)
+                    .update('Please ping the bot owner to allow you to use the <HISTORY> command.', true);
+                return;
+            }
+
             let rest = inputValue.slice(historyPrefix.length);
 
             let toShow = 1;
             const param = parseInt(rest);
             if (!isNaN(param)) {
-                toShow = param;
+                toShow = Math.min(historyConfig.maxAllowed, param);
             }
 
             const history = this.messageHistory.slice(this.messageHistory.length - toShow);
@@ -510,7 +520,7 @@ ${weightedSims.map(sim => {
             this.lastDiscordMessageId = messageToReplyTo.id
         }
 
-        await this.SendPromptToGPTChat(
+        const multiPromise = this.SendPromptToGPTChat(
             openai,
             user,
             inputValue,
@@ -523,6 +533,30 @@ ${weightedSims.map(sim => {
                 }
             }
         );
+
+        let promiseComplete = false;
+
+        const intervalId = setInterval(() => {
+            if (promiseComplete) {
+                clearInterval(intervalId);
+                return;
+            }
+
+            // Do something every 10 seconds
+        }, 5000);
+
+        // When the promise completes, set the variable to true
+        // so that the interval stops
+        multiPromise.finally(() => {
+            promiseComplete = true;
+        });
+
+        await multiPromise;
+
+        if (multi.messageList.length > 0) {
+            this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
+            await this.persist();
+        }
     }
 
     private async getDebugName(user: User) {
@@ -580,7 +614,7 @@ ${weightedSims.map(sim => {
     }
 
     static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
-        logMessage(`trying to convert <#${fromDb.threadId}>(${fromDb.threadId})!`);
+        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
 
         try {
             const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
@@ -599,6 +633,11 @@ ${weightedSims.map(sim => {
             const history: MessageHistoryItem[] = [];
 
             for (let string of actualConversation) {
+                // ignore empty strings
+                if(string.trim().length === 0) {
+                    continue;
+                }
+
                 const originalRegex = /\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/;
                 const newRegex = new RegExp(originalRegex.source.replace('GPT-Shell', sanitiseStringForRegex(fromDb.username)));
                 const match = string
@@ -654,12 +693,12 @@ ${weightedSims.map(sim => {
             result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
             result.lastUpdated = fromDb.lastUpdated;
 
-            logMessage(`managed to convert <#${result.threadId}>!`);
+            logMessage(`managed to convert ${await result.getLinkableId()}!`);
 
             return result;
         } catch (e) {
             const adminPingId = getEnv('ADMIN_PING_ID')
-            logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not upgrade conversation... ${fromDb.threadId} <#${fromDb.threadId}>`, e);
+            logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not upgrade conversation... ${await BaseConversation.GetLinkableId(fromDb)}`, e);
             return null;
         }
     }
