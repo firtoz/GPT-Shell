@@ -1,2 +1,2 @@
-export declare let messagePromise: Promise<any>;
-export declare function logMessage(...args: any[]): Promise<void>;
+export declare let messagePromise: Promise<any> | null;
+export declare function logMessage(...args: any[]): void;

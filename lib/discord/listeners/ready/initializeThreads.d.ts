@@ -1,2 +1,1 @@
-import { Client } from "discord.js";
-export declare function InitializeThreads(client: Client<boolean>): void;
+export declare function InitializeThreads(): void;

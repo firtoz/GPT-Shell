@@ -12,14 +12,14 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
     ],\
     "dependencyTreeRoots": [\
       {\
-        "name": "please-edit-this-name",\
+        "name": "gpt-shell",\
         "reference": "workspace:."\
       }\
     ],\
     "enableTopLevelFallback": true,\
     "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)",\
     "fallbackExclusionList": [\
-      ["please-edit-this-name", ["workspace:."]]\
+      ["gpt-shell", ["workspace:."]]\
     ],\
     "fallbackPool": [\
     ],\
@@ -36,20 +36,19 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["discord-interactions", "npm:3.2.0"],\
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
-            ["gpt-3-encoder", "npm:1.1.3"],\
             ["gpt3-tokenizer", "npm:1.1.4"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
             ["pnpapi", "npm:0.0.0"],\
-            ["ts-node", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:10.9.1"],\
-            ["ts-node-dev", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.0.0"],\
-            ["ts-pegjs", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.1.0"],\
+            ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
+            ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
+            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
             ["tsc", "npm:2.0.4"],\
             ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"],\
             ["uuid", "npm:9.0.0"],\
-            ["vite", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:4.0.0"],\
-            ["vitest", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:0.25.7"]\
+            ["vite", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:4.0.0"],\
+            ["vitest", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:0.25.7"]\
           ],\
           "linkType": "SOFT"\
         }]\
@@ -2331,13 +2330,34 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["gpt-3-encoder", [\
-        ["npm:1.1.3", {\
-          "packageLocation": "./.yarn/cache/gpt-3-encoder-npm-1.1.3-0457477e1b-98efa67a8f.zip/node_modules/gpt-3-encoder/",\
+      ["gpt-shell", [\
+        ["workspace:.", {\
+          "packageLocation": "./",\
           "packageDependencies": [\
-            ["gpt-3-encoder", "npm:1.1.3"]\
+            ["gpt-shell", "workspace:."],\
+            ["@types/pnpapi", "npm:0.0.2"],\
+            ["@types/uuid", "npm:9.0.0"],\
+            ["axios", "npm:1.1.3"],\
+            ["compute-cosine-similarity", "npm:1.0.0"],\
+            ["cross-env", "npm:7.0.3"],\
+            ["discord-interactions", "npm:3.2.0"],\
+            ["discord.js", "npm:14.7.1"],\
+            ["dotenv", "npm:16.0.3"],\
+            ["gpt3-tokenizer", "npm:1.1.4"],\
+            ["mongodb", "npm:4.12.1"],\
+            ["nodemon", "npm:2.0.20"],\
+            ["openai", "npm:3.1.0"],\
+            ["pnpapi", "npm:0.0.0"],\
+            ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
+            ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
+            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
+            ["tsc", "npm:2.0.4"],\
+            ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"],\
+            ["uuid", "npm:9.0.0"],\
+            ["vite", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:4.0.0"],\
+            ["vitest", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:0.25.7"]\
           ],\
-          "linkType": "HARD"\
+          "linkType": "SOFT"\
         }]\
       ]],\
       ["gpt3-tokenizer", [\
@@ -3045,37 +3065,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["please-edit-this-name", [\
-        ["workspace:.", {\
-          "packageLocation": "./",\
-          "packageDependencies": [\
-            ["please-edit-this-name", "workspace:."],\
-            ["@types/pnpapi", "npm:0.0.2"],\
-            ["@types/uuid", "npm:9.0.0"],\
-            ["axios", "npm:1.1.3"],\
-            ["compute-cosine-similarity", "npm:1.0.0"],\
-            ["cross-env", "npm:7.0.3"],\
-            ["discord-interactions", "npm:3.2.0"],\
-            ["discord.js", "npm:14.7.1"],\
-            ["dotenv", "npm:16.0.3"],\
-            ["gpt-3-encoder", "npm:1.1.3"],\
-            ["gpt3-tokenizer", "npm:1.1.4"],\
-            ["mongodb", "npm:4.12.1"],\
-            ["nodemon", "npm:2.0.20"],\
-            ["openai", "npm:3.1.0"],\
-            ["pnpapi", "npm:0.0.0"],\
-            ["ts-node", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:10.9.1"],\
-            ["ts-node-dev", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.0.0"],\
-            ["ts-pegjs", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.1.0"],\
-            ["tsc", "npm:2.0.4"],\
-            ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"],\
-            ["uuid", "npm:9.0.0"],\
-            ["vite", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:4.0.0"],\
-            ["vitest", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:0.25.7"]\
-          ],\
-          "linkType": "SOFT"\
-        }]\
-      ]],\
       ["pnpapi", [\
         ["npm:0.0.0", {\
           "packageLocation": "./.yarn/cache/pnpapi-npm-0.0.0-5087239484-9b8ce695cb.zip/node_modules/pnpapi/",\
@@ -3635,10 +3624,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:10.9.1", {\
-          "packageLocation": "./.yarn/__virtual__/ts-node-virtual-bd9a34953f/0/cache/ts-node-npm-10.9.1-6c268be7f4-090adff130.zip/node_modules/ts-node/",\
+        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1", {\
+          "packageLocation": "./.yarn/__virtual__/ts-node-virtual-faaeff65a9/0/cache/ts-node-npm-10.9.1-6c268be7f4-090adff130.zip/node_modules/ts-node/",\
           "packageDependencies": [\
-            ["ts-node", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:10.9.1"],\
+            ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["@cspotcode/source-map-support", "npm:0.8.1"],\
             ["@swc/core", null],\
             ["@swc/wasm", null],\
@@ -3680,10 +3669,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.0.0", {\
-          "packageLocation": "./.yarn/__virtual__/ts-node-dev-virtual-21cab4aaee/0/cache/ts-node-dev-npm-2.0.0-a9d487396c-d654b401de.zip/node_modules/ts-node-dev/",\
+        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0", {\
+          "packageLocation": "./.yarn/__virtual__/ts-node-dev-virtual-ba37a2df73/0/cache/ts-node-dev-npm-2.0.0-a9d487396c-d654b401de.zip/node_modules/ts-node-dev/",\
           "packageDependencies": [\
-            ["ts-node-dev", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.0.0"],\
+            ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
             ["@types/node-notifier", null],\
             ["@types/typescript", null],\
             ["chokidar", "npm:3.5.3"],\
@@ -3695,7 +3684,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["rimraf", "npm:2.7.1"],\
             ["source-map-support", "npm:0.5.21"],\
             ["tree-kill", "npm:1.2.2"],\
-            ["ts-node", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:10.9.1"],\
+            ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["tsconfig", "npm:7.0.0"],\
             ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"]\
           ],\
@@ -3716,10 +3705,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.1.0", {\
-          "packageLocation": "./.yarn/__virtual__/ts-pegjs-virtual-5d177530a4/0/cache/ts-pegjs-npm-2.1.0-a5ec3cac92-c726a086cb.zip/node_modules/ts-pegjs/",\
+        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0", {\
+          "packageLocation": "./.yarn/__virtual__/ts-pegjs-virtual-aef9766976/0/cache/ts-pegjs-npm-2.1.0-a5ec3cac92-c726a086cb.zip/node_modules/ts-pegjs/",\
           "packageDependencies": [\
-            ["ts-pegjs", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:2.1.0"],\
+            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
             ["@types/peggy", null],\
             ["peggy", null]\
           ],\
@@ -3894,12 +3883,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:4.0.0", {\
-          "packageLocation": "./.yarn/__virtual__/vite-virtual-a9d1e9258b/0/cache/vite-npm-4.0.0-84aaab34bc-83099d5033.zip/node_modules/vite/",\
+        ["virtual:3cb6115c7fa426b6c66a52133869c64088707d307515fda68dd763234dd3721df9e506de184eaf4e3da760b088f58773cca0b8c54c9d58cd9c5d28f182eed853#npm:4.0.0", {\
+          "packageLocation": "./.yarn/__virtual__/vite-virtual-b16c5b364a/0/cache/vite-npm-4.0.0-84aaab34bc-83099d5033.zip/node_modules/vite/",\
           "packageDependencies": [\
-            ["vite", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:4.0.0"],\
+            ["vite", "virtual:3cb6115c7fa426b6c66a52133869c64088707d307515fda68dd763234dd3721df9e506de184eaf4e3da760b088f58773cca0b8c54c9d58cd9c5d28f182eed853#npm:4.0.0"],\
             ["@types/less", null],\
-            ["@types/node", null],\
+            ["@types/node", "npm:18.11.10"],\
             ["@types/sass", null],\
             ["@types/stylus", null],\
             ["@types/sugarss", null],\
@@ -3930,12 +3919,12 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "HARD"\
         }],\
-        ["virtual:a9f87eaa00b69021fd2518d473f575a3861321c88456213132320b66ebe023ab178fc4d95692078609005ba56ca5e2a8885393b5080eaefa000f90b6b793fc2b#npm:4.0.0", {\
-          "packageLocation": "./.yarn/__virtual__/vite-virtual-fc2fc0fb45/0/cache/vite-npm-4.0.0-84aaab34bc-83099d5033.zip/node_modules/vite/",\
+        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:4.0.0", {\
+          "packageLocation": "./.yarn/__virtual__/vite-virtual-018e70b9b9/0/cache/vite-npm-4.0.0-84aaab34bc-83099d5033.zip/node_modules/vite/",\
           "packageDependencies": [\
-            ["vite", "virtual:a9f87eaa00b69021fd2518d473f575a3861321c88456213132320b66ebe023ab178fc4d95692078609005ba56ca5e2a8885393b5080eaefa000f90b6b793fc2b#npm:4.0.0"],\
+            ["vite", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:4.0.0"],\
             ["@types/less", null],\
-            ["@types/node", "npm:18.11.10"],\
+            ["@types/node", null],\
             ["@types/sass", null],\
             ["@types/stylus", null],\
             ["@types/sugarss", null],\
@@ -3975,10 +3964,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           ],\
           "linkType": "SOFT"\
         }],\
-        ["virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:0.25.7", {\
-          "packageLocation": "./.yarn/__virtual__/vitest-virtual-a9f87eaa00/0/cache/vitest-npm-0.25.7-805404a24f-5521c617fe.zip/node_modules/vitest/",\
+        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:0.25.7", {\
+          "packageLocation": "./.yarn/__virtual__/vitest-virtual-3cb6115c7f/0/cache/vitest-npm-0.25.7-805404a24f-5521c617fe.zip/node_modules/vitest/",\
           "packageDependencies": [\
-            ["vitest", "virtual:24e7b5fcc67b5e1f44479a3d08d58aa6e877e292cd915af65a0249380822042ae99e93c32629c25bebfd3e6715fbb2ac5a61a3aa50c645e39dbe1e7909f89708#npm:0.25.7"],\
+            ["vitest", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:0.25.7"],\
             ["@edge-runtime/vm", null],\
             ["@types/chai", "npm:4.3.4"],\
             ["@types/chai-subset", "npm:1.3.3"],\
@@ -4002,7 +3991,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["tinybench", "npm:2.3.1"],\
             ["tinypool", "npm:0.3.0"],\
             ["tinyspy", "npm:1.0.2"],\
-            ["vite", "virtual:a9f87eaa00b69021fd2518d473f575a3861321c88456213132320b66ebe023ab178fc4d95692078609005ba56ca5e2a8885393b5080eaefa000f90b6b793fc2b#npm:4.0.0"]\
+            ["vite", "virtual:3cb6115c7fa426b6c66a52133869c64088707d307515fda68dd763234dd3721df9e506de184eaf4e3da760b088f58773cca0b8c54c9d58cd9c5d28f182eed853#npm:4.0.0"]\
           ],\
           "packagePeers": [\
             "@edge-runtime/vm",\

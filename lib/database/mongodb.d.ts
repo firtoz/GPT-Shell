@@ -8,6 +8,7 @@ export declare class KeyValueDB {
     private collection;
     constructor();
     initialise(): Promise<boolean>;
+    close(): Promise<boolean>;
     get<T = any>(key: string): Promise<T | null>;
     set(key: string, value: any): Promise<void>;
     getAndWatch(key: string, callback: (value: string | null) => void): Promise<void>;

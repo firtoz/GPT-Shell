@@ -1,24 +1,22 @@
 import { Message, TextBasedChannel, User } from "discord.js";
 import { ModelName } from "./ModelInfo";
-export declare class ChatGPTConversation {
-    threadId: string;
-    creatorId: string;
-    guildId: string;
+import { BaseConversation } from "./BaseConversation";
+import './compute-cosine-similarity';
+import { ChatGPTConversationVersion0 } from "./ChatGPTConversationVersion0";
+import { MessageHistoryItem } from "./MessageHistoryItem";
+export declare const messageToPromptPart: (item: MessageHistoryItem) => string;
+export declare class ChatGPTConversation extends BaseConversation {
     private username;
     private model;
-    lastUpdated: number;
-    lastDiscordMessageId: string | null;
-    deleted: boolean;
-    allHistory: string;
-    numPrompts: number;
-    currentHistory: string;
-    isDirectMessage: boolean;
+    static latestVersion: number;
+    messageHistory: MessageHistoryItem[];
+    version: number;
+    private makeEmbeddings;
     constructor(threadId: string, creatorId: string, guildId: string, username: string, model: ModelName);
-    persist(): Promise<void>;
-    private static getDBKey;
-    static retrieve(threadId: string): Promise<ChatGPTConversation | null>;
-    private static handleRetrievalFromDB;
+    static handleRetrievalFromDB(fromDb: ChatGPTConversation): Promise<ChatGPTConversation>;
     private SendPromptToGPTChat;
     handlePrompt(user: User, channel: TextBasedChannel, inputValue: string, messageToReplyTo?: Message<boolean>): Promise<void>;
-    static initialise(callback: (info: ChatGPTConversation) => Promise<void>): Promise<void>;
+    private getDebugName;
+    static initialiseAll(): Promise<void>;
+    static upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null>;
 }
