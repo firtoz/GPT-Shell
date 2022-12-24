@@ -58,13 +58,25 @@ if (!MAIN_SERVER_ID) {
     throw new Error('Need MAIN_SERVER_ID env variable.');
 }
 
+const messageFormattedDateTime = (date: Date) => {
+    return date.toLocaleString('default', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).replace(/,\s+/g, ' ')
+}
 
 export const messageToPromptPart = (item: MessageHistoryItem): string => {
-    if (item.type === "human") {
-        return `(${item.userId}|${item.username}):${item.content}`;
-    }
+    const endOfPrompt = item.type === 'response' ? END_OF_PROMPT : '';
 
-    return `${item.username}:${item.content}`;
+    const timeInfo = item.timestamp ? `[${messageFormattedDateTime(new Date(item.timestamp))}] ` : '';
+
+    return `${timeInfo}${item.username}:${endOfPrompt} ${item.content.trimStart()}`;
 }
 
 async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {
@@ -175,8 +187,8 @@ export class ChatGPTConversation extends BaseConversation {
                 );
 
                 const prompt = `${initialPrompt}
-${messages.map(messageToPromptPart).join('\n')}${END_OF_PROMPT}
-${this.username}:${latestResponseText}`;
+${messages.map(messageToPromptPart).join('\n')}
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
 
                 const newMessageItemEmbedding = newMessageItem.embedding;
                 if (this.makeEmbeddings && newMessageItemEmbedding != null) {
@@ -396,8 +408,35 @@ ${JSON.stringify(debugInfo, null, '  ')}
             const deleted = this.messageHistory.splice(this.messageHistory.length - toDelete);
 
             await trySendingMessage(channel, {
-                content: `Deleted: \n${deleted.map(item => messageToPromptPart(item)).join('\n')}`,
+                content: `Deleted: \n${deleted.length} message(s).`,
             });
+
+            await this.persist();
+
+            return;
+        }
+
+        const promptPrefix = '<PROMPT>';
+        if (inputValue.startsWith(promptPrefix)) {
+            const initialPrompt = getOriginalPrompt(this.username);
+            const numInitialPromptTokens = encodeLength(initialPrompt);
+
+            const modelInfo = ModelInfo[this.model];
+
+            const newMessageItem = await createHumanMessage(openai, user, inputValue.slice(promptPrefix.length), this.makeEmbeddings);
+            const messages = getLastMessagesUntilMaxTokens(this.messageHistory.concat(newMessageItem),
+                modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens)
+            );
+
+            const fullPrompt = `${initialPrompt}
+${messages.map(messageToPromptPart).join('\n')}
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+
+            const prompt = `===PROMPT===
+${fullPrompt}
+===END PROMPT - TOKENS: ${encodeLength(fullPrompt)} ===`;
+
+            await new MultiMessage(channel, undefined, messageToReplyTo).update(prompt, true);
 
             return;
         }
@@ -543,7 +582,7 @@ ${weightedSims.map(sim => {
                 return;
             }
 
-            // Do something every 10 seconds
+            channel.sendTyping();
         }, 5000);
 
         // When the promise completes, set the variable to true
@@ -635,7 +674,7 @@ ${weightedSims.map(sim => {
 
             for (let string of actualConversation) {
                 // ignore empty strings
-                if(string.trim().length === 0) {
+                if (string.trim().length === 0) {
                     continue;
                 }
 
