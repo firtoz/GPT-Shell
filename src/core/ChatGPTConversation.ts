@@ -309,7 +309,7 @@ ${weightedSims.map(sim => {
                     const responseMessage = await createResponseMessage(openai, this.username, user, latestResponseText, this.makeEmbeddings);
                     this.messageHistory.push(responseMessage);
 
-                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`);
+                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
 
                     await this.persist();
 
