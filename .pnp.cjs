@@ -29,6 +29,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",\
           "packageDependencies": [\
             ["@types/pnpapi", "npm:0.0.2"],\
+            ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
             ["compute-cosine-similarity", "npm:1.0.0"],\
@@ -41,6 +42,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
             ["pnpapi", "npm:0.0.0"],\
+            ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
             ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
@@ -1411,6 +1413,26 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["@types/glob", [\
+        ["npm:8.0.0", {\
+          "packageLocation": "./.yarn/cache/@types-glob-npm-8.0.0-02bd6d4d05-1817b05f5a.zip/node_modules/@types/glob/",\
+          "packageDependencies": [\
+            ["@types/glob", "npm:8.0.0"],\
+            ["@types/minimatch", "npm:5.1.2"],\
+            ["@types/node", "npm:18.11.10"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/minimatch", [\
+        ["npm:5.1.2", {\
+          "packageLocation": "./.yarn/cache/@types-minimatch-npm-5.1.2-aab9c394d3-0391a28286.zip/node_modules/@types/minimatch/",\
+          "packageDependencies": [\
+            ["@types/minimatch", "npm:5.1.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["@types/node", [\
         ["npm:18.11.10", {\
           "packageLocation": "./.yarn/cache/@types-node-npm-18.11.10-cca0d46cb2-0f60cb090b.zip/node_modules/@types/node/",\
@@ -1425,6 +1447,17 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@types-pnpapi-npm-0.0.2-8de4e4cb0d-b58ec37cfa.zip/node_modules/@types/pnpapi/",\
           "packageDependencies": [\
             ["@types/pnpapi", "npm:0.0.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@types/rimraf", [\
+        ["npm:3.0.2", {\
+          "packageLocation": "./.yarn/cache/@types-rimraf-npm-3.0.2-dd6eb5de99-b47fa302f4.zip/node_modules/@types/rimraf/",\
+          "packageDependencies": [\
+            ["@types/rimraf", "npm:3.0.2"],\
+            ["@types/glob", "npm:8.0.0"],\
+            ["@types/node", "npm:18.11.10"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -2336,6 +2369,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["gpt-shell", "workspace:."],\
             ["@types/pnpapi", "npm:0.0.2"],\
+            ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
             ["compute-cosine-similarity", "npm:1.0.0"],\
@@ -2348,6 +2382,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
             ["pnpapi", "npm:0.0.0"],\
+            ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
             ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
