@@ -2675,9 +2675,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"please-edit-this-name@workspace:.":
+"gpt-shell@workspace:.":
   version: 0.0.0-use.local
-  resolution: "please-edit-this-name@workspace:."
+  resolution: "gpt-shell@workspace:."
   dependencies:
     "@types/pnpapi": ^0
     "@types/uuid": ^9
