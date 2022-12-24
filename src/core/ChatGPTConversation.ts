@@ -160,7 +160,7 @@ export class ChatGPTConversation extends BaseConversation {
 
 
         let finished = false;
-        let completeResponseText = '';
+        let latestResponseText = '';
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
@@ -168,7 +168,7 @@ export class ChatGPTConversation extends BaseConversation {
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                const currentResponseTokens = encodeLength(completeResponseText);
+                const currentResponseTokens = encodeLength(latestResponseText);
 
                 const messages = getLastMessagesUntilMaxTokens(this.messageHistory,
                     modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
@@ -176,7 +176,7 @@ export class ChatGPTConversation extends BaseConversation {
 
                 const prompt = `${initialPrompt}
 ${messages.map(messageToPromptPart).join('\n')}${END_OF_PROMPT}
-${this.username}:${completeResponseText}`;
+${this.username}:${latestResponseText}`;
 
                 const newMessageItemEmbedding = newMessageItem.embedding;
                 if (this.makeEmbeddings && newMessageItemEmbedding != null) {
@@ -294,7 +294,7 @@ ${weightedSims.map(sim => {
 
                 const text = choice.text;
 
-                completeResponseText += text;
+                latestResponseText += text;
 
                 if (text == undefined) {
                     logMessage('No text?!');
@@ -306,21 +306,21 @@ ${weightedSims.map(sim => {
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    const responseMessage = await createResponseMessage(openai, this.username, user, completeResponseText, this.makeEmbeddings);
+                    const responseMessage = await createResponseMessage(openai, this.username, user, latestResponseText, this.makeEmbeddings);
                     this.messageHistory.push(responseMessage);
 
-                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${completeResponseText}`);
+                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`);
 
                     await this.persist();
 
                     if (onProgress) {
-                        onProgress(completeResponseText, true);
+                        onProgress(latestResponseText, true);
                     }
 
-                    return completeResponseText;
+                    return latestResponseText;
                 } else {
                     if (onProgress) {
-                        onProgress(completeResponseText, false);
+                        onProgress(latestResponseText, false);
                     }
 
                     finished = false;
