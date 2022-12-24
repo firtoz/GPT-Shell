@@ -251,6 +251,7 @@ ${weightedSims.map(sim => {
                     top_p: 0.9,
                     frequency_penalty: 0,
                     presence_penalty: 0,
+                    user: user.id,
                 }) as any;
             } catch (e: any) {
                 if (e.isAxiosError) {

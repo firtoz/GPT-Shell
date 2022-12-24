@@ -132,6 +132,7 @@ ${this.username}:`;
                     top_p: 0.9,
                     frequency_penalty: 0,
                     presence_penalty: 0,
+                    user: user.id,
                 }) as any;
             } catch (e: any) {
                 if (e.isAxiosError) {
@@ -328,7 +329,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
             const upgraded = await ChatGPTConversation.upgrade(fromDb);
 
-            if(upgraded != null) {
+            if (upgraded != null) {
                 await upgraded.initialise();
                 return;
             }
