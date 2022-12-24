@@ -1,8 +1,8 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
 import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
-import {logMessage} from "../utils/logMessage";
-import {CreateCompletionResponse, OpenAIApi} from 'openai';
+import {logMessage, printArg} from "../utils/logMessage";
+import {CreateCompletionResponse, CreateEmbeddingResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
@@ -19,6 +19,46 @@ import './compute-cosine-similarity';
 import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
+
+import {Filter, PineconeClient, Vector} from 'pinecone-client';
+import {v4} from "uuid";
+
+// Binary search algorithm
+function binarySearchIndex(numbers: number[], targetNumber: number): number {
+    let start = 0;
+    let end = numbers.length - 1;
+
+    while (start <= end) {
+        let mid = Math.floor((start + end) / 2);
+        if (numbers[mid] === targetNumber) {
+            return mid;
+        } else if (numbers[mid] < targetNumber) {
+            start = mid + 1;
+        } else {
+            end = mid - 1;
+        }
+    }
+    return -1;
+}
+
+// A type representing your metadata
+type Metadata = {
+    threadId: string;
+    timestamp: number;
+};
+
+const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
+
+if (!PINECONE_API_KEY) {
+    throw new Error('No PINECONE_API_KEY!');
+}
+
+
+const pinecone = new PineconeClient<Metadata>({
+    apiKey: PINECONE_API_KEY,
+    baseUrl: 'https://gptbernard-af5833f.svc.us-west1-gcp.pinecone.io/',
+    namespace: 'gpt-shell-messages',
+});
 
 type HistoryConfig = {
     maxAllowed: number;
@@ -80,15 +120,20 @@ export const messageToPromptPart = (item: MessageHistoryItem): string => {
 }
 
 async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {
-    const embedding = useEmbedding ? await openai.createEmbedding({
-        user: user.id,
-        input: message,
-        model: 'text-embedding-ada-002',
-    }) : null;
+    let embedding: AxiosResponse<CreateEmbeddingResponse> | null;
+    if (useEmbedding) {
+        embedding = await openai.createEmbedding({
+            user: user.id,
+            input: message,
+            model: 'text-embedding-ada-002',
+        }) as any as AxiosResponse<CreateEmbeddingResponse>;
+    } else {
+        embedding = null;
+    }
 
     const newMessageItem: MessageHistoryItem = {
         content: message,
-        embedding: embedding != null ? embedding.data.data : null,
+        embedding: embedding != null ? '' : null,
         numTokens: 0,
         type: 'human',
         username: user.username,
@@ -110,7 +155,7 @@ async function createResponseMessage(openai: OpenAIApi, username: string, user: 
 
     const newMessageItem: MessageHistoryItem = {
         content: responseMessage,
-        embedding: embedding ? embedding.data.data : null,
+        embedding: embedding ? '' : null,
         numTokens: 0,
         type: 'response',
         username: username,
@@ -190,70 +235,7 @@ export class ChatGPTConversation extends BaseConversation {
 ${messages.map(messageToPromptPart).join('\n')}
 [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
 
-                const newMessageItemEmbedding = newMessageItem.embedding;
-                if (this.makeEmbeddings && newMessageItemEmbedding != null) {
-                    const start = performance.now();
-
-                    const embeddingWeight = 0.8;
-                    const updateWeight = 1 - embeddingWeight;
-
-                    function calculateUpdateScore(lastUpdate: number) {
-                        const currentTime = new Date().getTime();
-                        const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
-                        const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
-                        const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
-                        const score = 1 / (1 + hoursSinceLastUpdate);
-                        return score;
-                    }
-
-                    const rawSimilarities = this.messageHistory
-                        .map((item, index) => {
-                            if (item !== newMessageItem && item.embedding && item.embedding.length > 0) {
-                                const similarityValue = similarity(newMessageItemEmbedding[0].embedding, item.embedding![0].embedding);
-                                const updateScore = 1 / (this.messageHistory.length - index);
-
-                                return {
-                                    item,
-                                    similarity: similarityValue,
-                                    updateScore: updateScore,
-                                    weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
-                                }
-                            } else {
-                                return {
-                                    item,
-                                    similarity: 0,
-                                    weighted: 0,
-                                    updateScore: 0,
-                                }
-                            }
-                        });
-
-                    const similarities = rawSimilarities
-                        .sort((a, b) => b.similarity - a.similarity)
-                        .slice(0, 10);
-
-                    const weightedSims = rawSimilarities
-                        .sort((a, b) => b.weighted - a.weighted)
-                        .slice(0, 10);
-
-                    const end = performance.now();
-
-                    // logMessage(`Prompt:
-// ${prompt.split('\n').map(item => `> ${item}`).join('\n')}`)
-
-                    logMessage(`Prompt is using ${messages.length} messages out of ${this.messageHistory.length} for ${encodeLength(prompt)} tokens.`);
-
-                    logMessage(`Similarity top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
-${similarities.map(sim => {
-                        return `- ${sim.similarity}: ${sim.item.content}`;
-                    }).join('\n')}`);
-
-                    logMessage(`Weighted top 10 - took ${((end - start) / 1000).toFixed(2)}s to compute:
-${weightedSims.map(sim => {
-                        return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
-                    }).join('\n')}`);
-
-                }
+                // const newMessageItemEmbedding = newMessageItem.embedding;
 
                 response = await openai.createCompletion({
                     model: this.model,
@@ -380,6 +362,50 @@ ${weightedSims.map(sim => {
             return;
         }
 
+        if (inputValue === '<EMBED>') {
+            await this.sendReply(channel, 'Preparing to embed...', messageToReplyTo);
+
+            const withTimestampWithoutEmbedding = this.messageHistory
+                .filter(item => !item.embedding && item.timestamp);
+
+            const firstN = withTimestampWithoutEmbedding.slice(0, 100);
+
+            const embeddings = await openai.createEmbedding({
+                user: user.id,
+                input: firstN.map(item => item.content),
+                model: 'text-embedding-ada-002',
+            });
+
+            await this.sendReply(channel, `Embeddings created for ${firstN.length} messages.`, messageToReplyTo);
+
+            const vectors: Vector<Metadata>[] = firstN.map((item, index) => {
+                return {
+                    id: v4(),
+                    values: embeddings.data.data[index].embedding,
+                    metadata: {
+                        threadId: this.threadId,
+                        timestamp: item.timestamp!,
+                    },
+                }
+            });
+
+            try {
+                await this.sendReply(channel, `Inserting to pinecone...`, messageToReplyTo);
+
+                await pinecone.upsert({
+                    vectors
+                });
+
+                await new MultiMessage(channel, undefined, messageToReplyTo)
+                    .update(`upsert completed!`, true);
+            } catch (e) {
+                await new MultiMessage(channel, undefined, messageToReplyTo)
+                    .update(`Error: ${printArg(e)}`, true);
+            }
+
+            return;
+        }
+
         if (inputValue === '<DEBUG>') {
             const {lastUpdated} = this;
             const totalTokens = this.messageHistory.reduce((sum, item) => sum + item.numTokens, 0);
@@ -462,15 +488,13 @@ ${fullPrompt}
             const history = this.messageHistory.slice(this.messageHistory.length - toShow);
             const response = `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`;
 
-            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
+            await this.sendReply(channel, response, messageToReplyTo);
 
             return;
         }
 
         const queryPrefix = '<QUERY>';
-        if (this.makeEmbeddings && inputValue.startsWith(queryPrefix)) {
-            await channel.sendTyping();
-
+        if (inputValue.startsWith(queryPrefix)) {
             let rest = inputValue.slice(queryPrefix.length);
 
             const firstCommaIndex = rest.indexOf(',');
@@ -482,72 +506,83 @@ ${fullPrompt}
                 return;
             }
 
-            const firstParam = rest.slice(0, firstCommaIndex).trim();
+            const firstParam = parseFloat(rest.slice(0, firstCommaIndex).trim());
             const restPrompt = rest.slice(firstCommaIndex + 1).trimStart();
 
-            const weight = parseFloat(firstParam);
-            if (isNaN(weight) || weight < 0 || weight > 1) {
-                await trySendingMessage(channel, {
-                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE\nERROR: time-weight value is not a number between 0 and 1!`,
-                });
-                return;
-            }
-
-            function calculateUpdateScore(lastUpdate: number) {
-                const currentTime = new Date().getTime();
-                const secondsSinceLastUpdate = (currentTime - lastUpdate) / 1000;
-                const minutesSinceLastUpdate = secondsSinceLastUpdate / 60;
-                const hoursSinceLastUpdate = minutesSinceLastUpdate / 60;
-                const score = 1 / (1 + hoursSinceLastUpdate);
-                return score;
-            }
-
-            const embeddingResponse = await openai.createEmbedding({
+            const embedding = await openai.createEmbedding({
                 user: user.id,
                 input: restPrompt,
                 model: 'text-embedding-ada-002',
+            }) as any as AxiosResponse<CreateEmbeddingResponse>;
+
+            const vector = embedding.data.data[0].embedding;
+
+            const queryParams: {
+                topK: number;
+                filter?: Filter<Metadata>;
+                includeMetadata: true;
+                includeValues?: boolean;
+                vector: number[];
+            } = {
+                topK: 100,
+                filter: {
+                    threadId: this.threadId,
+                },
+                includeMetadata: true,
+                vector,
+            };
+
+            const queryResult = await pinecone.query(queryParams);
+
+            const timestamps = this.messageHistory.map(item => item.timestamp).filter(ts => ts !== undefined) as number[];
+
+            const sorted = queryResult.matches.map(match => {
+                return {
+                    index: binarySearchIndex(timestamps, match.metadata.timestamp),
+                    score: match.score,
+                };
+            }).filter(match => match.index !== -1);
+
+            const messages = sorted.map(match => {
+                const matchingMessage = this.messageHistory[match.index];
+                if (matchingMessage.type === 'human') {
+                    if (this.messageHistory.length > match.index + 1) {
+                        return {
+                            match,
+                            messages: [
+                                matchingMessage,
+                                this.messageHistory[match.index + 1],
+                            ],
+                        };
+                    }
+                } else {
+                    if (match.index > 0) {
+                        return {
+                            match,
+                            messages: [
+                                this.messageHistory[match.index - 1],
+                                matchingMessage,
+                            ],
+                        };
+                    }
+                }
+
+                return {
+                    match,
+                    messages: [
+                        matchingMessage,
+                    ],
+                };
             });
 
-            const embedding = embeddingResponse.data.data;
+            const top10 = messages.slice(0, 10);
 
-            const updateWeight = weight;
-            const embeddingWeight = 1 - updateWeight;
+            const resultString = top10.map(item => {
+                return `- ${item.match.index.toString().padStart(4, '0')} ${item.match.score.toFixed(3)}
+${item.messages.map(item => `    - ${messageToPromptPart(item)}`).join('\n')}`;
+            }).join('\n');
 
-            const rawSimilarities = this.messageHistory
-                .map((item, index) => {
-                    const updateScore = 1 / (this.messageHistory.length - index);
-
-                    if (item.embedding && item.embedding.length > 0) {
-                        const similarityValue = similarity(embedding[0].embedding, item.embedding![0].embedding);
-
-                        return {
-                            item,
-                            similarity: similarityValue,
-                            updateScore: updateScore,
-                            weighted: embeddingWeight * similarityValue + updateWeight * updateScore,
-                        }
-                    }
-
-                    return {
-                        item,
-                        similarity: 0,
-                        weighted: 0,
-                        updateScore: 0,
-                    }
-                });
-
-            const weightedSims = rawSimilarities
-                .sort((a, b) => b.weighted - a.weighted)
-                .slice(0, 20);
-
-            const response = `
-QUERY: [${weight}, ${restPrompt}]            
-Weighted top 20:
-${weightedSims.map(sim => {
-                return `- ${sim.weighted} (${sim.updateScore}): ${sim.item.content}`;
-            }).join('\n')}`;
-
-            await new MultiMessage(channel, undefined, messageToReplyTo).update(response, true);
+            await this.sendReply(channel, `Result:\n${resultString}`, messageToReplyTo);
 
             return;
         }
@@ -599,7 +634,14 @@ ${weightedSims.map(sim => {
         }
     }
 
-    private async getDebugName(user: User) {
+    private sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
+        return new MultiMessage(channel, undefined, messageToReplyTo).update(message, true);
+    }
+
+    private async getDebugName(user
+                                   :
+                                   User
+    ) {
         return this.isDirectMessage ? user.username : await getGuildName(this.guildId);
     }
 
@@ -653,8 +695,14 @@ ${weightedSims.map(sim => {
         logMessage('Initialisation complete.');
     }
 
-    static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
-        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
+    static async upgrade(fromDb
+                             :
+                             ChatGPTConversationVersion0
+    ):
+        Promise<ChatGPTConversation | null> {
+        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`
+        )
+        ;
 
         try {
             const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);

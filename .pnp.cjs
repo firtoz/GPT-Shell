@@ -28,6 +28,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         [null, {\
           "packageLocation": "./",\
           "packageDependencies": [\
+            ["@types/lodash", "npm:4.14.191"],\
             ["@types/pnpapi", "npm:0.0.2"],\
             ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
@@ -38,9 +39,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt3-tokenizer", "npm:1.1.4"],\
+            ["lodash", "npm:4.17.21"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
+            ["pinecone-client", "npm:1.0.0"],\
             ["pnpapi", "npm:0.0.0"],\
             ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
@@ -1424,6 +1427,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["@types/lodash", [\
+        ["npm:4.14.191", {\
+          "packageLocation": "./.yarn/cache/@types-lodash-npm-4.14.191-67a04a969b-ba0d5434e1.zip/node_modules/@types/lodash/",\
+          "packageDependencies": [\
+            ["@types/lodash", "npm:4.14.191"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["@types/minimatch", [\
         ["npm:5.1.2", {\
           "packageLocation": "./.yarn/cache/@types-minimatch-npm-5.1.2-aab9c394d3-0391a28286.zip/node_modules/@types/minimatch/",\
@@ -2368,6 +2380,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./",\
           "packageDependencies": [\
             ["gpt-shell", "workspace:."],\
+            ["@types/lodash", "npm:4.14.191"],\
             ["@types/pnpapi", "npm:0.0.2"],\
             ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
@@ -2378,9 +2391,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["discord.js", "npm:14.7.1"],\
             ["dotenv", "npm:16.0.3"],\
             ["gpt3-tokenizer", "npm:1.1.4"],\
+            ["lodash", "npm:4.17.21"],\
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
+            ["pinecone-client", "npm:1.0.0"],\
             ["pnpapi", "npm:0.0.0"],\
             ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
@@ -2643,11 +2658,29 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
+      ["ky", [\
+        ["npm:0.32.2", {\
+          "packageLocation": "./.yarn/cache/ky-npm-0.32.2-8f58ebc4ab-0ca78c4fe7.zip/node_modules/ky/",\
+          "packageDependencies": [\
+            ["ky", "npm:0.32.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
       ["local-pkg", [\
         ["npm:0.4.2", {\
           "packageLocation": "./.yarn/cache/local-pkg-npm-0.4.2-534016519b-22be451353.zip/node_modules/local-pkg/",\
           "packageDependencies": [\
             ["local-pkg", "npm:0.4.2"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["lodash", [\
+        ["npm:4.17.21", {\
+          "packageLocation": "./.yarn/cache/lodash-npm-4.17.21-6382451519-eb835a2e51.zip/node_modules/lodash/",\
+          "packageDependencies": [\
+            ["lodash", "npm:4.17.21"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -3096,6 +3129,16 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/picomatch-npm-2.3.1-c782cfd986-050c865ce8.zip/node_modules/picomatch/",\
           "packageDependencies": [\
             ["picomatch", "npm:2.3.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["pinecone-client", [\
+        ["npm:1.0.0", {\
+          "packageLocation": "./.yarn/cache/pinecone-client-npm-1.0.0-33410ba2d3-07fd4e2126.zip/node_modules/pinecone-client/",\
+          "packageDependencies": [\
+            ["pinecone-client", "npm:1.0.0"],\
+            ["ky", "npm:0.32.2"]\
           ],\
           "linkType": "HARD"\
         }]\

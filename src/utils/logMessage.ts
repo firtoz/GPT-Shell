@@ -70,7 +70,7 @@ function stringify(obj: any) {
 }
 
 
-function printArg(arg: any): string {
+export function printArg(arg: any): string {
     switch (typeof arg) {
         case "function":
             return `<FUNCTION>`;

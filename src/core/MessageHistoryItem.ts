@@ -10,5 +10,5 @@ export type MessageHistoryItem = ({
     username: string;
     content: string;
     numTokens: number;
-    embedding: null | CreateEmbeddingResponseDataInner[];
+    embedding: null | string;
 };
