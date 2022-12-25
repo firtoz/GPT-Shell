@@ -48,17 +48,18 @@ type Metadata = {
 };
 
 const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
+const PINECONE_NAMESPACE = getEnv('PINECONE_NAMESPACE');
+const PINECONE_BASE_URL = getEnv('PINECONE_BASE_URL');
 
 if (!PINECONE_API_KEY) {
     throw new Error('No PINECONE_API_KEY!');
 }
 
-
-const pinecone = new PineconeClient<Metadata>({
+const pinecone = PINECONE_API_KEY && PINECONE_NAMESPACE && PINECONE_BASE_URL ? new PineconeClient<Metadata>({
     apiKey: PINECONE_API_KEY,
-    baseUrl: 'https://gptbernard-af5833f.svc.us-west1-gcp.pinecone.io/',
-    namespace: 'gpt-shell-messages',
-});
+    baseUrl: PINECONE_BASE_URL,
+    namespace: PINECONE_NAMESPACE,
+}) : null;
 
 type HistoryConfig = {
     maxAllowed: number;
@@ -67,26 +68,6 @@ type HistoryConfig = {
 function sanitiseStringForRegex(input: string) {
     return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
 }
-
-// uses a simple dot product
-function similarity(vec1: number[], vec2: number[]): number {
-    // Check that the vectors are the same length
-    if (vec1.length !== vec2.length) {
-        throw new Error('Vectors must be of the same length');
-    }
-
-    // Initialize the result
-    let result = 0;
-
-    // Calculate the dot product
-    for (let i = 0; i < vec1.length; i++) {
-        result += vec1[i] * vec2[i];
-    }
-
-    // Return the result
-    return result;
-}
-
 
 const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
@@ -362,13 +343,30 @@ ${messages.map(messageToPromptPart).join('\n')}
             return;
         }
 
-        if (inputValue === '<EMBED>') {
-            await this.sendReply(channel, 'Preparing to embed...', messageToReplyTo);
+        if (inputValue === '<EMBED>' && pinecone != null) {
+            const withoutEmbedding = this.messageHistory
+                .filter(item => !item.embedding);
 
-            const withTimestampWithoutEmbedding = this.messageHistory
-                .filter(item => !item.embedding && item.timestamp);
+            let timestampsFixed = false;
+            for (let i = 0; i < withoutEmbedding.length; i++) {
+                let withoutEmbeddingElement = withoutEmbedding[i];
+                if (!withoutEmbeddingElement.timestamp) {
+                    withoutEmbeddingElement.timestamp = this.lastUpdated - 1000 * (withoutEmbedding.length - i);
+                    timestampsFixed = true;
+                }
+            }
 
-            const firstN = withTimestampWithoutEmbedding.slice(0, 100);
+            await this.persist();
+
+            const firstN = withoutEmbedding.slice(0, 100);
+
+            if (firstN.length === 0) {
+                await this.sendReply(channel, `No need to embed anything.`, messageToReplyTo);
+
+                return;
+            }
+
+            await this.sendReply(channel, `Preparing to embed ${firstN.length} messages...`, messageToReplyTo);
 
             const embeddings = await openai.createEmbedding({
                 user: user.id,
@@ -395,6 +393,13 @@ ${messages.map(messageToPromptPart).join('\n')}
                 await pinecone.upsert({
                     vectors
                 });
+
+                for (let i = 0; i < firstN.length; i++) {
+                    let item = firstN[i];
+                    item.embedding = vectors[i].id;
+                }
+
+                await this.persist();
 
                 await new MultiMessage(channel, undefined, messageToReplyTo)
                     .update(`upsert completed!`, true);
@@ -494,7 +499,7 @@ ${fullPrompt}
         }
 
         const queryPrefix = '<QUERY>';
-        if (inputValue.startsWith(queryPrefix)) {
+        if (inputValue.startsWith(queryPrefix) && pinecone != null) {
             let rest = inputValue.slice(queryPrefix.length);
 
             const firstCommaIndex = rest.indexOf(',');
@@ -507,6 +512,15 @@ ${fullPrompt}
             }
 
             const firstParam = parseFloat(rest.slice(0, firstCommaIndex).trim());
+
+            if (isNaN(firstParam) || firstParam < 0 || firstParam > 1) {
+                await trySendingMessage(channel, {
+                    content: `<QUERY> [time-weight (NUMBER from 0 to 1)], PROMPT MESSAGE`,
+                });
+
+                return;
+            }
+
             const restPrompt = rest.slice(firstCommaIndex + 1).trimStart();
 
             const embedding = await openai.createEmbedding({
@@ -543,43 +557,62 @@ ${fullPrompt}
                 };
             }).filter(match => match.index !== -1);
 
-            const messages = sorted.map(match => {
+            // message id to max score map
+            const wantedMessages: Record<number, number> = {};
+
+            for (const match of sorted) {
+                const index = match.index;
+
                 const matchingMessage = this.messageHistory[match.index];
+
+                wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
+
                 if (matchingMessage.type === 'human') {
-                    if (this.messageHistory.length > match.index + 1) {
-                        return {
-                            match,
-                            messages: [
-                                matchingMessage,
-                                this.messageHistory[match.index + 1],
-                            ],
-                        };
+                    if (this.messageHistory.length > index + 1) {
+                        wantedMessages[index + 1] = Math.max(wantedMessages[index + 1] ?? 0, match.score);
                     }
                 } else {
-                    if (match.index > 0) {
-                        return {
-                            match,
-                            messages: [
-                                this.messageHistory[match.index - 1],
-                                matchingMessage,
-                            ],
-                        };
+                    if (index > 0) {
+                        wantedMessages[index - 1] = Math.max(wantedMessages[index - 1] ?? 0, match.score);
                     }
                 }
+            }
+
+            const orderWeight = firstParam;
+            const scoreWeight = 1 - orderWeight;
+
+            const entries = Object
+                .entries(wantedMessages) as any as [index: number, score: number][];
+
+            const messages = entries.map(([index, score]) => {
+                const matchingMessage = this.messageHistory[index];
+
+                const orderRanking = 1 / (this.messageHistory.length - index);
+
+                const weighted = score * scoreWeight + orderWeight * orderRanking;
 
                 return {
-                    match,
-                    messages: [
-                        matchingMessage,
-                    ],
-                };
+                    match: {
+                        index,
+                        score,
+                        weighted,
+                    },
+                    message: matchingMessage,
+                }
             });
 
-            const top10 = messages.slice(0, 10);
+            const topK = messages
+                .sort((a, b) => {
+                    return b.match.weighted - a.match.weighted;
+                })
+                .slice(0, 20)
+                .sort((a, b) => {
+                    return a.match.index - b.match.index;
+                });
 
-            const resultString = top10.map(item => {
-                return `- ${item.match.index.toString().padStart(4, '0')} ${item.match.score.toFixed(3)}
-${item.messages.map(item => `    - ${messageToPromptPart(item)}`).join('\n')}`;
+            const resultString = topK.map(item => {
+                return `- ${item.match.index.toString().padStart(4, '0')} S:${item.match.score.toFixed(3)} W:${item.match.weighted.toFixed(3)} ${item.message.numTokens.toString().padStart(4, '0')}
+${messageToPromptPart(item.message)}`;
             }).join('\n');
 
             await this.sendReply(channel, `Result:\n${resultString}`, messageToReplyTo);
@@ -638,10 +671,7 @@ ${item.messages.map(item => `    - ${messageToPromptPart(item)}`).join('\n')}`;
         return new MultiMessage(channel, undefined, messageToReplyTo).update(message, true);
     }
 
-    private async getDebugName(user
-                                   :
-                                   User
-    ) {
+    private async getDebugName(user: User) {
         return this.isDirectMessage ? user.username : await getGuildName(this.guildId);
     }
 
@@ -695,14 +725,8 @@ ${item.messages.map(item => `    - ${messageToPromptPart(item)}`).join('\n')}`;
         logMessage('Initialisation complete.');
     }
 
-    static async upgrade(fromDb
-                             :
-                             ChatGPTConversationVersion0
-    ):
-        Promise<ChatGPTConversation | null> {
-        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`
-        )
-        ;
+    static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
+        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
 
         try {
             const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
