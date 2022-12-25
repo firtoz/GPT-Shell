@@ -67,6 +67,7 @@ type HistoryConfig = {
 }
 
 function sanitiseStringForRegex(input: string) {
+    // noinspection RegExpRedundantEscape
     return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
 }
 
@@ -101,57 +102,6 @@ export const messageToPromptPart = (item: MessageHistoryItem): string => {
     return `${timeInfo}${item.username}:${endOfPrompt} ${item.content.trimStart()}`;
 }
 
-async function createHumanMessage(openai: OpenAIApi, user: User, message: string, useEmbedding: boolean) {
-    let embedding: AxiosResponse<CreateEmbeddingResponse> | null;
-    if (useEmbedding) {
-        embedding = await openai.createEmbedding({
-            user: user.id,
-            input: message,
-            model: 'text-embedding-ada-002',
-        }) as any as AxiosResponse<CreateEmbeddingResponse>;
-    } else {
-        embedding = null;
-    }
-
-    const newMessageItem: MessageHistoryItem = {
-        id: v4(),
-        content: message,
-        embedding: embedding != null ? '' : null,
-        numTokens: 0,
-        type: 'human',
-        username: user.username,
-        userId: user.id,
-        timestamp: new Date().getTime(),
-    };
-
-    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
-
-    return newMessageItem;
-}
-
-async function createResponseMessage(openai: OpenAIApi, username: string, user: User, responseMessage: string, makeEmbeddings: boolean) {
-    const embedding = makeEmbeddings ? await openai.createEmbedding({
-        user: user.id,
-        input: responseMessage,
-        model: 'text-embedding-ada-002',
-    }) : null;
-
-    const newMessageItem: MessageHistoryItem = {
-        id: v4(),
-        content: responseMessage,
-        embedding: embedding ? '' : null,
-        numTokens: 0,
-        type: 'response',
-        username: username,
-        timestamp: new Date().getTime(),
-    };
-
-    newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
-
-    return newMessageItem;
-}
-
-
 type RelevancyMatch = { index: number, score: number, weighted: number, orderRanking: number };
 
 type RelevancyResult = { match: RelevancyMatch, message: MessageHistoryItem };
@@ -169,7 +119,6 @@ export class ChatGPTConversation extends BaseConversation {
     messageHistoryMap: Record<string, MessageHistoryItem> = {};
 
     public version = ChatGPTConversation.latestVersion;
-    private makeEmbeddings: boolean = false;
 
     constructor(
         threadId: string,
@@ -218,6 +167,87 @@ export class ChatGPTConversation extends BaseConversation {
         }
 
         return result;
+    }
+
+    async createHumanMessage(openai: OpenAIApi, user: User, message: string) {
+        const messageId = v4();
+        const timestamp = new Date().getTime();
+
+        const embeddingId = await this.tryCreateEmbeddingForMessage(openai, user, message, timestamp, messageId);
+
+        const newMessageItem: MessageHistoryItem = {
+            id: messageId,
+            content: message,
+            embedding: embeddingId,
+            numTokens: 0,
+            type: 'human',
+            username: user.username,
+            userId: user.id,
+            timestamp: timestamp,
+        };
+
+        newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+        return newMessageItem;
+    }
+
+    async createResponseMessage(openai: OpenAIApi, botUsername: string, user: User, message: string) {
+        const messageId = v4();
+        const timestamp = new Date().getTime();
+
+        const embeddingId = await this.tryCreateEmbeddingForMessage(openai, user, message, timestamp, messageId);
+
+        const newMessageItem: MessageHistoryItem = {
+            id: messageId,
+            content: message,
+            embedding: embeddingId,
+            numTokens: 0,
+            type: 'response',
+            username: botUsername,
+            timestamp: new Date().getTime(),
+        };
+
+        newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
+
+        return newMessageItem;
+    }
+
+
+    private async tryCreateEmbeddingForMessage(openai: OpenAIApi, user: User, message: string, timestamp: number, messageId: string) {
+        let embeddingId: string | null = null;
+        if (pinecone) {
+            embeddingId = v4();
+
+            try {
+                const embeddings = await openai.createEmbedding({
+                    user: user.id,
+                    input: message,
+                    model: 'text-embedding-ada-002',
+                });
+
+                const vector: Vector<Metadata> = {
+                    id: embeddingId,
+                    values: embeddings.data.data[0].embedding,
+                    metadata: {
+                        threadId: this.threadId,
+                        timestamp: timestamp,
+                        id: messageId,
+                    },
+                };
+
+                await pinecone.upsert({
+                    vectors: [vector],
+                });
+            } catch (e) {
+                const adminPingId = getEnv('ADMIN_PING_ID')
+                logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not create embedding... ${
+                        await this.getLinkableId()}`,
+                    e);
+
+                embeddingId = null;
+            }
+        }
+        return embeddingId;
     }
 
     private async SendPromptToGPTChat(
@@ -324,12 +354,12 @@ export class ChatGPTConversation extends BaseConversation {
                 if (choice.finish_reason === 'stop') {
                     finished = true;
 
-                    const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
+                    const newMessageItem = await this.createHumanMessage(openai, user, message);
 
                     this.messageHistoryMap[newMessageItem.id] = newMessageItem;
                     this.messageHistory.push(newMessageItem.id);
 
-                    const responseMessage = await createResponseMessage(openai, this.username, user, latestResponseText, this.makeEmbeddings);
+                    const responseMessage = await this.createResponseMessage(openai, this.username, user, latestResponseText);
                     this.messageHistory.push(responseMessage.id);
                     this.messageHistoryMap[responseMessage.id] = responseMessage;
 
@@ -654,7 +684,7 @@ ${messageToPromptPart(item.message)}`;
 
         const inputTokens = encodeLength(input);
 
-        const newMessageItem = await createHumanMessage(openai, user, input, this.makeEmbeddings);
+        const newMessageItem = await this.createHumanMessage(openai, user, input);
 
         let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
 
@@ -665,7 +695,7 @@ ${messageToPromptPart(item.message)}`;
             // use only messages, it's simpler
 
             return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
-${allMessagesInHistory.map(messageToPromptPart).join('\n')}
+${allMessagesInHistory.concat(newMessageItem).map(messageToPromptPart).join('\n')}
 [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
         }
 
@@ -968,7 +998,6 @@ ${latestMessages.map(messageToPromptPart).join('\n')}
                 map[item.id] = item;
                 return map;
             }, {} as Record<string, MessageHistoryItem>);
-            result.makeEmbeddings = false;
             result.deleted = false;
             result.isDirectMessage = fromDb.isDirectMessage;
             result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
