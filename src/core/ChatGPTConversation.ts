@@ -152,6 +152,15 @@ async function createResponseMessage(openai: OpenAIApi, username: string, user: 
 }
 
 
+type RelevancyMatch = { index: number, score: number, weighted: number, orderRanking: number };
+
+type RelevancyResult = { match: RelevancyMatch, message: MessageHistoryItem };
+
+type RelevancyCheckCache = {
+    searchPerformed: boolean,
+    results: RelevancyResult[],
+};
+
 export class ChatGPTConversation extends BaseConversation {
     static latestVersion = 3;
 
@@ -217,18 +226,19 @@ export class ChatGPTConversation extends BaseConversation {
         message: string,
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
-        const initialPrompt = getOriginalPrompt(this.username);
-        const numInitialPromptTokens = encodeLength(initialPrompt);
-        const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
 
-        this.messageHistoryMap[newMessageItem.id] = newMessageItem;
-        this.messageHistory.push(newMessageItem.id);
+        // const initialPrompt = getOriginalPrompt(this.username);
+        // const numInitialPromptTokens = encodeLength(initialPrompt);
 
         const modelInfo = ModelInfo[this.model];
 
-
         let finished = false;
         let latestResponseText = '';
+
+        const relevancyResultsCache: RelevancyCheckCache = {
+            searchPerformed: false,
+            results: [],
+        };
 
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
@@ -236,21 +246,23 @@ export class ChatGPTConversation extends BaseConversation {
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                const currentResponseTokens = encodeLength(latestResponseText);
+                // const currentResponseTokens = encodeLength(latestResponseText);
 
-                const messages = getLastMessagesUntilMaxTokens(this.messageHistory.map(id => this.messageHistoryMap[id]),
-                    modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
-                );
+                // const messages = getLastMessagesUntilMaxTokens(this.messageHistory.map(id => this.messageHistoryMap[id]),
+                //     modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
+                // );
 
-                const prompt = `${initialPrompt}
-${messages.map(messageToPromptPart).join('\n')}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
+//                 const prompt = `${initialPrompt}
+// ${messages.map(messageToPromptPart).join('\n')}
+// [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
+
+                const fullPrompt = await this.getFullPrompt(openai, user, message, latestResponseText, relevancyResultsCache);
 
                 // const newMessageItemEmbedding = newMessageItem.embedding;
 
                 response = await openai.createCompletion({
                     model: this.model,
-                    prompt,
+                    prompt: fullPrompt,
                     temperature: 0.8,
                     max_tokens: maxTokens,
                     top_p: 0.9,
@@ -311,6 +323,11 @@ ${messages.map(messageToPromptPart).join('\n')}
 
                 if (choice.finish_reason === 'stop') {
                     finished = true;
+
+                    const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
+
+                    this.messageHistoryMap[newMessageItem.id] = newMessageItem;
+                    this.messageHistory.push(newMessageItem.id);
 
                     const responseMessage = await createResponseMessage(openai, this.username, user, latestResponseText, this.makeEmbeddings);
                     this.messageHistory.push(responseMessage.id);
@@ -482,21 +499,12 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
         const promptPrefix = '<PROMPT>';
         if (inputValue.startsWith(promptPrefix)) {
-            const initialPrompt = getOriginalPrompt(this.username);
-            const numInitialPromptTokens = encodeLength(initialPrompt);
+            const input = inputValue.slice(promptPrefix.length);
 
-            const modelInfo = ModelInfo[this.model];
-
-            const newMessageItem = await createHumanMessage(openai, user, inputValue.slice(promptPrefix.length), this.makeEmbeddings);
-            const messages = getLastMessagesUntilMaxTokens(this.messageHistory
-                    .map(id => this.messageHistoryMap[id])
-                    .concat(newMessageItem),
-                modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens)
-            );
-
-            const fullPrompt = `${initialPrompt}
-${messages.map(messageToPromptPart).join('\n')}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+            const fullPrompt = await this.getFullPrompt(openai, user, input, '', {
+                searchPerformed: false,
+                results: [],
+            }, true);
 
             const prompt = `===PROMPT===
 ${fullPrompt}
@@ -546,9 +554,9 @@ ${fullPrompt}
                 return;
             }
 
-            const firstParam = parseFloat(rest.slice(0, firstCommaIndex).trim());
+            const orderWeight = parseFloat(rest.slice(0, firstCommaIndex).trim());
 
-            if (isNaN(firstParam) || firstParam < 0 || firstParam > 1) {
+            if (isNaN(orderWeight) || orderWeight < 0 || orderWeight > 1) {
                 await trySendingMessage(channel, {
                     content: `<QUERY> [time-weight (NUMBER from 0 to 1)], PROMPT MESSAGE`,
                 });
@@ -556,89 +564,9 @@ ${fullPrompt}
                 return;
             }
 
-            const restPrompt = rest.slice(firstCommaIndex + 1).trimStart();
+            const input = rest.slice(firstCommaIndex + 1).trimStart();
 
-            const embedding = await openai.createEmbedding({
-                user: user.id,
-                input: restPrompt,
-                model: 'text-embedding-ada-002',
-            }) as any as AxiosResponse<CreateEmbeddingResponse>;
-
-            const vector = embedding.data.data[0].embedding;
-
-            const queryParams: {
-                topK: number;
-                filter?: Filter<Metadata>;
-                includeMetadata: true;
-                includeValues?: boolean;
-                vector: number[];
-            } = {
-                topK: 100,
-                filter: {
-                    threadId: this.threadId,
-                },
-                includeMetadata: true,
-                vector,
-            };
-
-            const queryResult = await pinecone.query(queryParams);
-
-            const timestamps = this.messageHistory
-                .map(id => this.messageHistoryMap[id])
-                .map(item => item.timestamp)
-                .filter(ts => ts !== undefined) as number[];
-
-            const sorted = queryResult.matches.map(match => {
-                return {
-                    index: binarySearchIndex(timestamps, match.metadata.timestamp),
-                    score: match.score,
-                };
-            }).filter(match => match.index !== -1);
-
-            // message id to max score map
-            const wantedMessages: Record<number, number> = {};
-
-            for (const match of sorted) {
-                const index = match.index;
-
-                const matchingMessage = this.messageHistoryMap[this.messageHistory[match.index]];
-
-                wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
-
-                if (matchingMessage.type === 'human') {
-                    if (this.messageHistory.length > index + 1) {
-                        wantedMessages[index + 1] = Math.max(wantedMessages[index + 1] ?? 0, match.score);
-                    }
-                } else {
-                    if (index > 0) {
-                        wantedMessages[index - 1] = Math.max(wantedMessages[index - 1] ?? 0, match.score);
-                    }
-                }
-            }
-
-            const orderWeight = firstParam;
-            const scoreWeight = 1 - orderWeight;
-
-            const entries = Object
-                .entries(wantedMessages) as any as [index: number, score: number][];
-
-            const messages = entries.map(([index, score]) => {
-                const matchingMessage = this.messageHistoryMap[this.messageHistory[index]];
-
-                const orderRanking = (index / this.messageHistory.length);
-
-                const weighted = score * scoreWeight + orderWeight * orderRanking;
-
-                return {
-                    match: {
-                        index,
-                        score,
-                        weighted,
-                        orderRanking,
-                    },
-                    message: matchingMessage,
-                }
-            });
+            const messages = await this.getRelevantMessages(user, openai, input, orderWeight);
 
             const topK = messages
                 .sort((a, b) => {
@@ -708,6 +636,196 @@ ${messageToPromptPart(item.message)}`;
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
             await this.persist();
         }
+    }
+
+    private async getFullPrompt(
+        openai: OpenAIApi,
+        user: User,
+        input: string,
+        latestResponseText: string,
+        relevancyCheckCache: RelevancyCheckCache,
+        debug: boolean = false,
+    ) {
+        const initialPrompt = getOriginalPrompt(this.username);
+        const modelInfo = ModelInfo[this.model];
+
+        const numInitialPromptTokens = encodeLength(initialPrompt);
+        const currentResponseTokens = encodeLength(latestResponseText);
+
+        const inputTokens = encodeLength(input);
+
+        const newMessageItem = await createHumanMessage(openai, user, input, this.makeEmbeddings);
+
+        let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
+
+        const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
+        const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => sum + item.numTokens, 0);
+
+        if (totalTokensFromHistory < availableTokens) {
+            // use only messages, it's simpler
+
+            return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
+${allMessagesInHistory.map(messageToPromptPart).join('\n')}
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+        }
+
+        // TODO use bot config for this, in database.
+        const TOKENS_FOR_RECENT_MESSAGES = Math.min(1000, availableTokens);
+
+        const latestMessages = getLastMessagesUntilMaxTokens(
+            allMessagesInHistory.concat(newMessageItem),
+            TOKENS_FOR_RECENT_MESSAGES
+        );
+
+        if (!relevancyCheckCache.searchPerformed) {
+            // check relevancy using last 4 messages.
+            const last4 = allMessagesInHistory.slice(-4);
+
+            const relevantMessageInput = last4
+                .map(item => item.content)
+                .concat(newMessageItem.content)
+                .join('\n');
+
+            const relevantMessages = await this.getRelevantMessages(user, openai, relevantMessageInput, 0.05);
+
+            relevantMessages.sort((a, b) => {
+                return b.match.weighted - a.match.weighted;
+            });
+
+            relevancyCheckCache.searchPerformed = true;
+
+            relevancyCheckCache.results = relevantMessages;
+        }
+
+
+        const newRelevantMessages = relevancyCheckCache.results.filter(item => !latestMessages.find(message => message.id === item.message.id));
+
+        // get top N until MAX_ALLOWED_TOKENS is reached?
+        const usedTokensFromMessages = latestMessages.reduce((sum, item) => sum + item.numTokens, 0);
+
+        availableTokens -= usedTokensFromMessages;
+
+        let numRelevantInclude = 0;
+
+        for (const relevantMessage of newRelevantMessages) {
+            if (relevantMessage.message.numTokens < availableTokens) {
+                numRelevantInclude++;
+                availableTokens -= relevantMessage.message.numTokens;
+            } else {
+                break;
+            }
+        }
+
+        const includedRelevantMessages = newRelevantMessages.slice(0, numRelevantInclude).sort((a, b) => a.match.index - b.match.index);
+
+        let relevantPrefix: string;
+        let relevantSuffix: string;
+
+        if (debug) {
+            relevantPrefix = `---RELEVANT--`;
+            relevantSuffix = `---END RELEVANT - TOKENS: ${includedRelevantMessages.reduce((sum, item) => sum + item.message.numTokens, 0)} ---`;
+        } else {
+            relevantPrefix = 'Earlier history:';
+            relevantSuffix = 'Recent history:';
+        }
+
+        return `${initialPrompt}
+${relevantPrefix}
+${includedRelevantMessages.map(item => messageToPromptPart(item.message)).join('\n')}
+${relevantSuffix}
+${latestMessages.map(messageToPromptPart).join('\n')}
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+    }
+
+    private async getRelevantMessages(user: User, openai: OpenAIApi, input: string, orderWeight: number):
+        Promise<RelevancyResult[]> {
+        if (!pinecone) {
+            return [];
+        }
+
+        const scoreWeight = 1 - orderWeight;
+
+        const embedding = await openai.createEmbedding({
+            user: user.id,
+            input: input,
+            model: 'text-embedding-ada-002',
+        }) as any as AxiosResponse<CreateEmbeddingResponse>;
+
+        const vector = embedding.data.data[0].embedding;
+
+        const queryParams: {
+            topK: number;
+            filter?: Filter<Metadata>;
+            includeMetadata: true;
+            includeValues?: boolean;
+            vector: number[];
+        } = {
+            topK: 100,
+            filter: {
+                threadId: this.threadId,
+            },
+            includeMetadata: true,
+            vector,
+        };
+
+        const queryResult = await pinecone.query(queryParams);
+
+        const timestamps = this.messageHistory
+            .map(id => this.messageHistoryMap[id])
+            .map(item => item.timestamp)
+            .filter(ts => ts !== undefined) as number[];
+
+        const sorted = queryResult.matches.map(match => {
+            return {
+                index: binarySearchIndex(timestamps, match.metadata.timestamp),
+                score: match.score,
+            };
+        }).filter(match => match.index !== -1);
+
+        // message id to max score map
+        const wantedMessages: Record<number, number> = {};
+
+        for (const match of sorted) {
+            const index = match.index;
+
+            const matchingMessage = this.messageHistoryMap[this.messageHistory[match.index]];
+
+            wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
+
+            if (matchingMessage.type === 'human') {
+                if (this.messageHistory.length > index + 1) {
+                    wantedMessages[index + 1] = Math.max(wantedMessages[index + 1] ?? 0, match.score);
+                }
+            } else {
+                if (index > 0) {
+                    wantedMessages[index - 1] = Math.max(wantedMessages[index - 1] ?? 0, match.score);
+                }
+            }
+        }
+
+
+        const entries = Object
+            .entries(wantedMessages) as any as [index: number, score: number][];
+
+        return entries.map(([index, score]): RelevancyResult => {
+            const matchingMessage = this.messageHistoryMap[this.messageHistory[index]];
+
+            const orderRanking = (index / this.messageHistory.length);
+
+            const weighted = score * scoreWeight + orderWeight * orderRanking;
+
+            const relevancyMatch: RelevancyMatch = {
+                index,
+                score,
+                weighted,
+                orderRanking,
+            };
+
+            return {
+                match: relevancyMatch,
+                message: matchingMessage,
+            }
+        });
     }
 
     private sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {

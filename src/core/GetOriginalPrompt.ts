@@ -25,6 +25,5 @@ The conversations are in this format:
 [datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2 IN LANG Z]
 
 Generate only one response per prompt.
-
 `;
 }
