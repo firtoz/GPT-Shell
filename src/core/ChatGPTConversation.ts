@@ -20,8 +20,10 @@ import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
 
-import {Filter, PineconeClient, Vector} from 'pinecone-client';
+import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
+import {PineconeMetadata} from "./PineconeMetadata";
+import {getPineconeClient} from "./config";
 
 // Binary search algorithm
 function binarySearchIndex(numbers: number[], targetNumber: number): number {
@@ -41,26 +43,19 @@ function binarySearchIndex(numbers: number[], targetNumber: number): number {
     return -1;
 }
 
-// A type representing your metadata
-type Metadata = {
-    threadId: string;
-    timestamp: number;
-    id: string;
-};
-
-const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
-const PINECONE_NAMESPACE = getEnv('PINECONE_NAMESPACE');
-const PINECONE_BASE_URL = getEnv('PINECONE_BASE_URL');
-
-if (!PINECONE_API_KEY) {
-    throw new Error('No PINECONE_API_KEY!');
-}
-
-const pinecone = PINECONE_API_KEY && PINECONE_NAMESPACE && PINECONE_BASE_URL ? new PineconeClient<Metadata>({
-    apiKey: PINECONE_API_KEY,
-    baseUrl: PINECONE_BASE_URL,
-    namespace: PINECONE_NAMESPACE,
-}) : null;
+// const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
+// const PINECONE_NAMESPACE = getEnv('PINECONE_NAMESPACE');
+// const PINECONE_BASE_URL = getEnv('PINECONE_BASE_URL');
+//
+// if (!PINECONE_API_KEY) {
+//     throw new Error('No PINECONE_API_KEY!');
+// }
+//
+// const pinecone = PINECONE_API_KEY && PINECONE_NAMESPACE && PINECONE_BASE_URL ? new PineconeClient<Metadata>({
+//     apiKey: PINECONE_API_KEY,
+//     baseUrl: PINECONE_BASE_URL,
+//     namespace: PINECONE_NAMESPACE,
+// }) : null;
 
 type HistoryConfig = {
     maxAllowed: number;
@@ -215,6 +210,7 @@ export class ChatGPTConversation extends BaseConversation {
 
     private async tryCreateEmbeddingForMessage(openai: OpenAIApi, user: User, message: string, timestamp: number, messageId: string) {
         let embeddingId: string | null = null;
+        const pinecone = await getPineconeClient();
         if (pinecone) {
             embeddingId = v4();
 
@@ -225,7 +221,7 @@ export class ChatGPTConversation extends BaseConversation {
                     model: 'text-embedding-ada-002',
                 });
 
-                const vector: Vector<Metadata> = {
+                const vector: Vector<PineconeMetadata> = {
                     id: embeddingId,
                     values: embeddings.data.data[0].embedding,
                     metadata: {
@@ -421,74 +417,78 @@ export class ChatGPTConversation extends BaseConversation {
             return;
         }
 
-        if (inputValue === '<EMBED>' && pinecone != null) {
-            const withoutEmbedding = this.messageHistory
-                .map(id => this.messageHistoryMap[id])
-                .filter(item => !item.embedding || Array.isArray(item.embedding));
 
-            let timestampsFixed = false;
-            for (let i = 0; i < withoutEmbedding.length; i++) {
-                let withoutEmbeddingElement = withoutEmbedding[i];
-                if (!withoutEmbeddingElement.timestamp) {
-                    withoutEmbeddingElement.timestamp = this.lastUpdated - 1000 * (withoutEmbedding.length - i);
-                    timestampsFixed = true;
-                }
-            }
+        if (inputValue === '<EMBED>') {
+            const pinecone = await getPineconeClient();
+            if (pinecone != null) {
+                const withoutEmbedding = this.messageHistory
+                    .map(id => this.messageHistoryMap[id])
+                    .filter(item => !item.embedding || Array.isArray(item.embedding));
 
-            await this.persist();
-
-            const firstN = withoutEmbedding.slice(0, 100);
-
-            if (firstN.length === 0) {
-                await this.sendReply(channel, `No need to embed anything.`, messageToReplyTo);
-
-                return;
-            }
-
-            await this.sendReply(channel, `Preparing to embed ${firstN.length} messages...`, messageToReplyTo);
-
-            const embeddings = await openai.createEmbedding({
-                user: user.id,
-                input: firstN.map(item => item.content),
-                model: 'text-embedding-ada-002',
-            });
-
-            await this.sendReply(channel, `Embeddings created for ${firstN.length} messages.`, messageToReplyTo);
-
-            const vectors: Vector<Metadata>[] = firstN.map((item, index) => {
-                return {
-                    id: v4(),
-                    values: embeddings.data.data[index].embedding,
-                    metadata: {
-                        threadId: this.threadId,
-                        timestamp: item.timestamp!,
-                        id: item.id,
-                    },
-                }
-            });
-
-            try {
-                await this.sendReply(channel, `Inserting to pinecone...`, messageToReplyTo);
-
-                await pinecone.upsert({
-                    vectors
-                });
-
-                for (let i = 0; i < firstN.length; i++) {
-                    let item = firstN[i];
-                    item.embedding = vectors[i].id;
+                let timestampsFixed = false;
+                for (let i = 0; i < withoutEmbedding.length; i++) {
+                    let withoutEmbeddingElement = withoutEmbedding[i];
+                    if (!withoutEmbeddingElement.timestamp) {
+                        withoutEmbeddingElement.timestamp = this.lastUpdated - 1000 * (withoutEmbedding.length - i);
+                        timestampsFixed = true;
+                    }
                 }
 
                 await this.persist();
 
-                await new MultiMessage(channel, undefined, messageToReplyTo)
-                    .update(`upsert completed!`, true);
-            } catch (e) {
-                await new MultiMessage(channel, undefined, messageToReplyTo)
-                    .update(`Error: ${printArg(e)}`, true);
-            }
+                const firstN = withoutEmbedding.slice(0, 100);
 
-            return;
+                if (firstN.length === 0) {
+                    await this.sendReply(channel, `No need to embed anything.`, messageToReplyTo);
+
+                    return;
+                }
+
+                await this.sendReply(channel, `Preparing to embed ${firstN.length} messages...`, messageToReplyTo);
+
+                const embeddings = await openai.createEmbedding({
+                    user: user.id,
+                    input: firstN.map(item => item.content),
+                    model: 'text-embedding-ada-002',
+                });
+
+                await this.sendReply(channel, `Embeddings created for ${firstN.length} messages.`, messageToReplyTo);
+
+                const vectors: Vector<PineconeMetadata>[] = firstN.map((item, index) => {
+                    return {
+                        id: v4(),
+                        values: embeddings.data.data[index].embedding,
+                        metadata: {
+                            threadId: this.threadId,
+                            timestamp: item.timestamp!,
+                            id: item.id,
+                        },
+                    }
+                });
+
+                try {
+                    await this.sendReply(channel, `Inserting to pinecone...`, messageToReplyTo);
+
+                    await pinecone.upsert({
+                        vectors
+                    });
+
+                    for (let i = 0; i < firstN.length; i++) {
+                        let item = firstN[i];
+                        item.embedding = vectors[i].id;
+                    }
+
+                    await this.persist();
+
+                    await new MultiMessage(channel, undefined, messageToReplyTo)
+                        .update(`upsert completed!`, true);
+                } catch (e) {
+                    await new MultiMessage(channel, undefined, messageToReplyTo)
+                        .update(`Error: ${printArg(e)}`, true);
+                }
+
+                return;
+            }
         }
 
         if (inputValue === '<DEBUG>') {
@@ -572,53 +572,56 @@ ${fullPrompt}
         }
 
         const queryPrefix = '<QUERY>';
-        if (inputValue.startsWith(queryPrefix) && pinecone != null) {
-            let rest = inputValue.slice(queryPrefix.length);
+        if (inputValue.startsWith(queryPrefix)) {
+            const pinecone = await getPineconeClient();
+            if (pinecone != null) {
+                let rest = inputValue.slice(queryPrefix.length);
 
-            const firstCommaIndex = rest.indexOf(',');
-            if (firstCommaIndex == -1) {
-                await trySendingMessage(channel, {
-                    content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE`,
-                });
+                const firstCommaIndex = rest.indexOf(',');
+                if (firstCommaIndex == -1) {
+                    await trySendingMessage(channel, {
+                        content: `<QUERY> [time-weight (from 0 to 1)], PROMPT MESSAGE`,
+                    });
 
-                return;
-            }
+                    return;
+                }
 
-            const orderWeight = parseFloat(rest.slice(0, firstCommaIndex).trim());
+                const orderWeight = parseFloat(rest.slice(0, firstCommaIndex).trim());
 
-            if (isNaN(orderWeight) || orderWeight < 0 || orderWeight > 1) {
-                await trySendingMessage(channel, {
-                    content: `<QUERY> [time-weight (NUMBER from 0 to 1)], PROMPT MESSAGE`,
-                });
+                if (isNaN(orderWeight) || orderWeight < 0 || orderWeight > 1) {
+                    await trySendingMessage(channel, {
+                        content: `<QUERY> [time-weight (NUMBER from 0 to 1)], PROMPT MESSAGE`,
+                    });
 
-                return;
-            }
+                    return;
+                }
 
-            const input = rest.slice(firstCommaIndex + 1).trimStart();
+                const input = rest.slice(firstCommaIndex + 1).trimStart();
 
-            const messages = await this.getRelevantMessages(user, openai, input, orderWeight);
+                const messages = await this.getRelevantMessages(user, openai, input, orderWeight);
 
-            const topK = messages
-                .sort((a, b) => {
-                    return b.match.weighted - a.match.weighted;
-                })
-                .slice(0, 10)
-                .sort((a, b) => {
-                    return a.match.index - b.match.index;
-                });
+                const topK = messages
+                    .sort((a, b) => {
+                        return b.match.weighted - a.match.weighted;
+                    })
+                    .slice(0, 10)
+                    .sort((a, b) => {
+                        return a.match.index - b.match.index;
+                    });
 
-            const resultString = topK.map(item => {
-                const indexString = item.match.index.toString().padStart(4, '0');
-                const scoreString = item.match.score.toFixed(3);
-                const orderString = item.match.orderRanking.toFixed(3);
-                const weightString = item.match.weighted.toFixed(3);
-                return `- ${indexString} S:${scoreString} O:${orderString} W:${weightString} ${item.message.numTokens.toString().padStart(4, '0')}
+                const resultString = topK.map(item => {
+                    const indexString = item.match.index.toString().padStart(4, '0');
+                    const scoreString = item.match.score.toFixed(3);
+                    const orderString = item.match.orderRanking.toFixed(3);
+                    const weightString = item.match.weighted.toFixed(3);
+                    return `- ${indexString} S:${scoreString} O:${orderString} W:${weightString} ${item.message.numTokens.toString().padStart(4, '0')}
 ${messageToPromptPart(item.message)}`;
-            }).join('\n');
+                }).join('\n');
 
-            await this.sendReply(channel, `Result:\n${resultString}`, messageToReplyTo);
+                await this.sendReply(channel, `Result:\n${resultString}`, messageToReplyTo);
 
-            return;
+                return;
+            }
         }
 
         await channel.sendTyping();
@@ -769,6 +772,8 @@ ${latestMessages.map(messageToPromptPart).join('\n')}
 
     private async getRelevantMessages(user: User, openai: OpenAIApi, input: string, orderWeight: number):
         Promise<RelevancyResult[]> {
+        const pinecone = await getPineconeClient();
+
         if (!pinecone) {
             return [];
         }
@@ -785,7 +790,7 @@ ${latestMessages.map(messageToPromptPart).join('\n')}
 
         const queryParams: {
             topK: number;
-            filter?: Filter<Metadata>;
+            filter?: Filter<PineconeMetadata>;
             includeMetadata: true;
             includeValues?: boolean;
             vector: number[];
