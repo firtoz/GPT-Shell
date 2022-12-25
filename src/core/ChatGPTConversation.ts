@@ -45,6 +45,7 @@ function binarySearchIndex(numbers: number[], targetNumber: number): number {
 type Metadata = {
     threadId: string;
     timestamp: number;
+    id: string;
 };
 
 const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
@@ -414,6 +415,7 @@ ${messages.map(messageToPromptPart).join('\n')}
                     metadata: {
                         threadId: this.threadId,
                         timestamp: item.timestamp!,
+                        id: item.id,
                     },
                 }
             });
