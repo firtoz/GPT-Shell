@@ -6,6 +6,7 @@ export type MessageHistoryItem = ({
 } | {
     type: 'response';
 }) & {
+    id: string;
     timestamp: number | undefined;
     username: string;
     content: string;

@@ -113,6 +113,7 @@ async function createHumanMessage(openai: OpenAIApi, user: User, message: string
     }
 
     const newMessageItem: MessageHistoryItem = {
+        id: v4(),
         content: message,
         embedding: embedding != null ? '' : null,
         numTokens: 0,
@@ -135,6 +136,7 @@ async function createResponseMessage(openai: OpenAIApi, username: string, user: 
     }) : null;
 
     const newMessageItem: MessageHistoryItem = {
+        id: v4(),
         content: responseMessage,
         embedding: embedding ? '' : null,
         numTokens: 0,
@@ -150,9 +152,11 @@ async function createResponseMessage(openai: OpenAIApi, username: string, user: 
 
 
 export class ChatGPTConversation extends BaseConversation {
-    static latestVersion = 2;
+    static latestVersion = 3;
 
-    messageHistory: MessageHistoryItem[] = [];
+    messageHistory: string[] = [];
+
+    messageHistoryMap: Record<string, MessageHistoryItem> = {};
 
     public version = ChatGPTConversation.latestVersion;
     private makeEmbeddings: boolean = false;
@@ -169,6 +173,24 @@ export class ChatGPTConversation extends BaseConversation {
 
 
     public static async handleRetrievalFromDB(fromDb: ChatGPTConversation) {
+        let versionUpgraded = false;
+        if (fromDb.version === 2) {
+            logMessage(`trying to upgrade from v2 ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
+
+            fromDb.messageHistoryMap = {};
+            const historyItems = fromDb.messageHistory as any as MessageHistoryItem[];
+            for (let i = 0; i < historyItems.length; i++) {
+                let historyItem = historyItems[i];
+                historyItem.id = v4();
+                fromDb.messageHistoryMap[historyItem.id] = historyItem;
+
+                fromDb.messageHistory[i] = historyItem.id;
+            }
+            fromDb.version = ChatGPTConversation.latestVersion;
+
+            versionUpgraded = true;
+        }
+
         const result = new ChatGPTConversation(
             fromDb.threadId,
             fromDb.creatorId,
@@ -178,6 +200,12 @@ export class ChatGPTConversation extends BaseConversation {
         );
 
         Object.assign(result, fromDb);
+
+        if (versionUpgraded) {
+            logMessage(`upgraded from v2 ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
+
+            await result.persist();
+        }
 
         return result;
     }
@@ -192,7 +220,8 @@ export class ChatGPTConversation extends BaseConversation {
         const numInitialPromptTokens = encodeLength(initialPrompt);
         const newMessageItem = await createHumanMessage(openai, user, message, this.makeEmbeddings);
 
-        this.messageHistory.push(newMessageItem);
+        this.messageHistoryMap[newMessageItem.id] = newMessageItem;
+        this.messageHistory.push(newMessageItem.id);
 
         const modelInfo = ModelInfo[this.model];
 
@@ -208,7 +237,7 @@ export class ChatGPTConversation extends BaseConversation {
 
                 const currentResponseTokens = encodeLength(latestResponseText);
 
-                const messages = getLastMessagesUntilMaxTokens(this.messageHistory,
+                const messages = getLastMessagesUntilMaxTokens(this.messageHistory.map(id => this.messageHistoryMap[id]),
                     modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
                 );
 
@@ -283,7 +312,8 @@ ${messages.map(messageToPromptPart).join('\n')}
                     finished = true;
 
                     const responseMessage = await createResponseMessage(openai, this.username, user, latestResponseText, this.makeEmbeddings);
-                    this.messageHistory.push(responseMessage);
+                    this.messageHistory.push(responseMessage.id);
+                    this.messageHistoryMap[responseMessage.id] = responseMessage;
 
                     logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
 
@@ -345,7 +375,8 @@ ${messages.map(messageToPromptPart).join('\n')}
 
         if (inputValue === '<EMBED>' && pinecone != null) {
             const withoutEmbedding = this.messageHistory
-                .filter(item => !item.embedding);
+                .map(id => this.messageHistoryMap[id])
+                .filter(item => !item.embedding || Array.isArray(item.embedding));
 
             let timestampsFixed = false;
             for (let i = 0; i < withoutEmbedding.length; i++) {
@@ -413,7 +444,7 @@ ${messages.map(messageToPromptPart).join('\n')}
 
         if (inputValue === '<DEBUG>') {
             const {lastUpdated} = this;
-            const totalTokens = this.messageHistory.reduce((sum, item) => sum + item.numTokens, 0);
+            const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
             const numMessages = this.messageHistory.length;
             const debugInfo = {lastUpdated, numMessages, totalTokens};
             const debugMessage = `Debug: 
@@ -455,7 +486,9 @@ ${JSON.stringify(debugInfo, null, '  ')}
             const modelInfo = ModelInfo[this.model];
 
             const newMessageItem = await createHumanMessage(openai, user, inputValue.slice(promptPrefix.length), this.makeEmbeddings);
-            const messages = getLastMessagesUntilMaxTokens(this.messageHistory.concat(newMessageItem),
+            const messages = getLastMessagesUntilMaxTokens(this.messageHistory
+                    .map(id => this.messageHistoryMap[id])
+                    .concat(newMessageItem),
                 modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens)
             );
 
@@ -490,7 +523,7 @@ ${fullPrompt}
                 toShow = Math.min(historyConfig.maxAllowed, param);
             }
 
-            const history = this.messageHistory.slice(this.messageHistory.length - toShow);
+            const history = this.messageHistory.slice(this.messageHistory.length - toShow).map(id => this.messageHistoryMap[id]);
             const response = `History: \n${history.map(item => messageToPromptPart(item)).join('\n')}`;
 
             await this.sendReply(channel, response, messageToReplyTo);
@@ -548,7 +581,10 @@ ${fullPrompt}
 
             const queryResult = await pinecone.query(queryParams);
 
-            const timestamps = this.messageHistory.map(item => item.timestamp).filter(ts => ts !== undefined) as number[];
+            const timestamps = this.messageHistory
+                .map(id => this.messageHistoryMap[id])
+                .map(item => item.timestamp)
+                .filter(ts => ts !== undefined) as number[];
 
             const sorted = queryResult.matches.map(match => {
                 return {
@@ -563,7 +599,7 @@ ${fullPrompt}
             for (const match of sorted) {
                 const index = match.index;
 
-                const matchingMessage = this.messageHistory[match.index];
+                const matchingMessage = this.messageHistoryMap[this.messageHistory[match.index]];
 
                 wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
 
@@ -585,9 +621,9 @@ ${fullPrompt}
                 .entries(wantedMessages) as any as [index: number, score: number][];
 
             const messages = entries.map(([index, score]) => {
-                const matchingMessage = this.messageHistory[index];
+                const matchingMessage = this.messageHistoryMap[this.messageHistory[index]];
 
-                const orderRanking = 1 / (this.messageHistory.length - index);
+                const orderRanking = (index / this.messageHistory.length);
 
                 const weighted = score * scoreWeight + orderWeight * orderRanking;
 
@@ -596,6 +632,7 @@ ${fullPrompt}
                         index,
                         score,
                         weighted,
+                        orderRanking,
                     },
                     message: matchingMessage,
                 }
@@ -605,13 +642,17 @@ ${fullPrompt}
                 .sort((a, b) => {
                     return b.match.weighted - a.match.weighted;
                 })
-                .slice(0, 20)
+                .slice(0, 10)
                 .sort((a, b) => {
                     return a.match.index - b.match.index;
                 });
 
             const resultString = topK.map(item => {
-                return `- ${item.match.index.toString().padStart(4, '0')} S:${item.match.score.toFixed(3)} W:${item.match.weighted.toFixed(3)} ${item.message.numTokens.toString().padStart(4, '0')}
+                const indexString = item.match.index.toString().padStart(4, '0');
+                const scoreString = item.match.score.toFixed(3);
+                const orderString = item.match.orderRanking.toFixed(3);
+                const weightString = item.match.weighted.toFixed(3);
+                return `- ${indexString} S:${scoreString} O:${orderString} W:${weightString} ${item.message.numTokens.toString().padStart(4, '0')}
 ${messageToPromptPart(item.message)}`;
             }).join('\n');
 
@@ -680,7 +721,9 @@ ${messageToPromptPart(item.message)}`;
             key: {$regex: /^THREAD-/},
             $and: [
                 {
-                    "value.version": ChatGPTConversation.latestVersion,
+                    "value.version": {
+                        $in: [2, ChatGPTConversation.latestVersion],
+                    },
                 },
                 {
                     $or: [
@@ -768,6 +811,7 @@ ${messageToPromptPart(item.message)}`;
 
                 if (response) {
                     history.push({
+                        id: v4(),
                         type: 'response',
                         content: response.trimStart(),
                         numTokens: encodeLength(response),
@@ -779,6 +823,7 @@ ${messageToPromptPart(item.message)}`;
 
                 if (prompt) {
                     history.push({
+                        id: v4(),
                         type: 'human',
                         username: username,
                         userId: userId,
@@ -798,7 +843,11 @@ ${messageToPromptPart(item.message)}`;
                 fromDb.model,
             );
 
-            result.messageHistory = history;
+            result.messageHistory = history.map(item => item.id);
+            result.messageHistoryMap = history.reduce((map, item) => {
+                map[item.id] = item;
+                return map;
+            }, {} as Record<string, MessageHistoryItem>);
             result.makeEmbeddings = false;
             result.deleted = false;
             result.isDirectMessage = fromDb.isDirectMessage;
