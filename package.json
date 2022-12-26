@@ -47,6 +47,7 @@
     "openai": "^3.1.0",
     "pinecone-client": "^1.0.0",
     "pnpapi": "^0.0.0",
+    "ts-toolbelt": "^9.6.0",
     "tsc": "^2.0.4",
     "uuid": "^9.0.0"
   }

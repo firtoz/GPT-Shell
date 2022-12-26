@@ -2,6 +2,8 @@ import {db} from "../database/db";
 import {PineconeClient} from "pinecone-client";
 import {PineconeMetadata} from "./PineconeMetadata";
 import {logMessage} from "../utils/logMessage";
+import _ from 'lodash';
+import {ModelName} from "./ModelInfo";
 
 
 export type PineconeConfigOpts = {
@@ -26,14 +28,35 @@ export type PineconeConfigOpts = {
 
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null,
+    maxMessagesToEmbed: number;
+    maxTokensForRecentMessages: number;
+    modelInfo: Record<ModelName, {
+        MAX_ALLOWED_TOKENS: number,
+        MAX_TOKENS_PER_RESPONSE: number,
+    }>
 };
 
 const defaultConfig: ConfigType = {
     pineconeOptions: null,
+    maxMessagesToEmbed: 300,
+    maxTokensForRecentMessages: 1000,
+    modelInfo: {
+        ['text-davinci-003']: {
+            MAX_ALLOWED_TOKENS: 2500,
+            MAX_TOKENS_PER_RESPONSE: 512,
+        },
+    },
 };
 
 export const getConfig = async () => {
-    return await db.get<ConfigType>('BOT-CONFIG') ?? defaultConfig;
+    const defaultClone = _.cloneDeep(defaultConfig);
+
+    const configFromDB = await db.get<ConfigType>('BOT-CONFIG');
+    if (configFromDB) {
+        return Object.assign(defaultClone, configFromDB);
+    }
+
+    return defaultClone;
 }
 
 /**

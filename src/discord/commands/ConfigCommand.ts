@@ -9,12 +9,14 @@ import {
     ButtonStyle,
     Client,
     CommandInteraction,
-    ComponentType,
+    ComponentType, EmbedBuilder,
     TextInputStyle
 } from "discord.js";
 import {getConfig} from "../../core/config";
 import {printArg} from "../../utils/logMessage";
-import {PineconeButtonCommand} from "./PineconeButtonCommand";
+import {PineconeButtonHandler} from "./PineconeButtonHandler";
+import {EmbedLimitButtonHandler} from "./EmbedLimitButtonHandler";
+import {TokenLimitsButtonHandler} from "./TokenLimitsButtonHandler";
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
@@ -43,12 +45,40 @@ export const ConfigCommand: Command | null = CONFIG_COMMAND_NAME ? {
         const config = await getConfig();
 
         await commandInteraction.followUp({
-            content: `Config:\n${printArg(config)}`, components: [
+            // content: `Config:\n${printArg(config)}`,
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(`${client.user!.tag} Config`)
+                    .setFields([
+                        {
+                            name: 'Pinecone:',
+                            value: config.pineconeOptions ? '✅ Enabled!' : '☐ Disabled!',
+                        },
+                        {
+                            name: 'Embed limits:',
+                            value: config.maxMessagesToEmbed.toString(),
+                        },
+                        {
+                            name: 'Token limits:',
+                            value: `Max tokens for recent messages: ${config.maxTokensForRecentMessages}
+Max tokens for prompt: ${config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS}`,
+                        },
+                    ])
+            ],
+            components: [
                 new ActionRowBuilder<ButtonBuilder>()
                     .addComponents(
                         new ButtonBuilder()
-                            .setCustomId(PineconeButtonCommand.id)
+                            .setCustomId(PineconeButtonHandler.id)
                             .setLabel('Update Pinecone Config')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId(EmbedLimitButtonHandler.id)
+                            .setLabel('Change Embed Limit')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId(TokenLimitsButtonHandler.id)
+                            .setLabel('Change Token Limits')
                             .setStyle(ButtonStyle.Primary),
                     ),
             ]

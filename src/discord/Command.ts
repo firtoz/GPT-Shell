@@ -1,10 +1,4 @@
-import {
-    CommandInteraction,
-    ChatInputApplicationCommandData,
-    Client,
-    ContextMenuCommandInteraction,
-    ButtonInteraction
-} from "discord.js";
+import {ChatInputApplicationCommandData, Client, CommandInteraction, ContextMenuCommandInteraction} from "discord.js";
 
 export interface Command extends ChatInputApplicationCommandData {
     ephemeral?: boolean;
@@ -12,7 +6,3 @@ export interface Command extends ChatInputApplicationCommandData {
 }
 
 
-export interface ButtonCommand {
-    id: string,
-    run: (client: Client, interaction: ButtonInteraction) => Promise<void>;
-}

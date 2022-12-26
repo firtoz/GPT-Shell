@@ -2108,6 +2108,7 @@ __metadata:
     ts-node: ^10.9.1
     ts-node-dev: ^2.0.0
     ts-pegjs: ^2.1.0
+    ts-toolbelt: ^9.6.0
     tsc: ^2.0.4
     typescript: 4.9.3
     uuid: ^9.0.0
@@ -3335,6 +3336,13 @@ __metadata:
   bin:
     tspegjs: src/cli.js
   checksum: c726a086cba264e0c607a661a64fa5f9dd721d7779f44525d82f1536e6fdac6f70f866a347b858a41a28d2d2db8043d8751f4427b1cbabff0d5e74ede0d9fc95
+  languageName: node
+  linkType: hard
+
+"ts-toolbelt@npm:^9.6.0":
+  version: 9.6.0
+  resolution: "ts-toolbelt@npm:9.6.0"
+  checksum: 9f35fd95d895a5d32ea9fd2e532a695b0bae6cbff6832b77292efa188a0ed1ed6e54f63f74a8920390f3d909a7a3adb20a144686372a8e78b420246a9bd3d58a
   languageName: node
   linkType: hard
 
