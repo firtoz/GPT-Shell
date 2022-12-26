@@ -4,7 +4,7 @@ import {PineconeMetadata} from "./PineconeMetadata";
 import {logMessage} from "../utils/logMessage";
 import _ from 'lodash';
 import {ModelName} from "./ModelInfo";
-
+import {getEnv} from "../utils/GetEnv";
 
 export type PineconeConfigOpts = {
     /**
@@ -33,8 +33,11 @@ export type ConfigType = {
     modelInfo: Record<ModelName, {
         MAX_ALLOWED_TOKENS: number,
         MAX_TOKENS_PER_RESPONSE: number,
-    }>
+    }>;
+    openAIApiKey: string | null;
 };
+
+const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
 
 const defaultConfig: ConfigType = {
     pineconeOptions: null,
@@ -46,6 +49,7 @@ const defaultConfig: ConfigType = {
             MAX_TOKENS_PER_RESPONSE: 512,
         },
     },
+    openAIApiKey: OPENAI_API_KEY,
 };
 
 export const getConfig = async () => {

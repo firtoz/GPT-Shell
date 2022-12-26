@@ -16,7 +16,7 @@ import {getConfig} from "../../core/config";
 import {printArg} from "../../utils/logMessage";
 import {PineconeButtonHandler} from "./PineconeButtonHandler";
 import {EmbedLimitButtonHandler} from "./EmbedLimitButtonHandler";
-import {TokenLimitsButtonHandler} from "./TokenLimitsButtonHandler";
+import {OpenAIAPIKeyButtonHandler, TokenLimitsButtonHandler} from "./TokenLimitsButtonHandler";
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
@@ -78,6 +78,10 @@ Max tokens for recent messages: ${config.maxTokensForRecentMessages}.
 
 If max tokens for recent messages are less than max tokens for prompt, then the rest of the tokens will be used for the longer term memory.`,
                         },
+                        {
+                            name: 'OpenAI API Key',
+                            value: config.openAIApiKey ?? '❌ Missing!',
+                        },
                     ])
             ],
             components: [
@@ -94,6 +98,10 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                         new ButtonBuilder()
                             .setCustomId(TokenLimitsButtonHandler.id)
                             .setLabel('Change Token Limits')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId(OpenAIAPIKeyButtonHandler.id)
+                            .setLabel('Change OpenAI API Key')
                             .setStyle(ButtonStyle.Primary),
                     ),
             ]
