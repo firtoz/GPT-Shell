@@ -423,7 +423,7 @@ export class ChatGPTConversation extends BaseConversation {
 
 
         if (inputValue === '<EMBED>' && user.id === adminPingId) {
-            await this.tryEmbed(user, openai, channel, messageToReplyTo);
+            await this.tryEmbedMany(user, openai, channel, messageToReplyTo);
             return;
         }
 
@@ -565,11 +565,11 @@ ${fullPrompt}
         }
     }
 
-    private async tryEmbed(user: User, openai: OpenAIApi, channel?: TextBasedChannel, messageToReplyTo?: Message<boolean>) {
+    private async tryEmbedMany(user: User, openai: OpenAIApi, channel?: TextBasedChannel, messageToReplyTo?: Message<boolean>) {
         const config = await getConfig();
 
         const pinecone = await getPineconeClient();
-        if (pinecone != null) {
+        if (pinecone != null && config.maxMessagesToEmbed > 0) {
             const withoutEmbedding = this.messageHistory
                 .map(id => this.messageHistoryMap[id])
                 .filter(item => !item.embedding);
@@ -844,7 +844,7 @@ ${latestMessages.map(messageToPromptPart).join('\n')}
         }
 
         if (this.nextEmbedCheck < new Date().getTime()) {
-            await this.tryEmbed(user, openai);
+            await this.tryEmbedMany(user, openai);
 
             // 1 day
             this.nextEmbedCheck = new Date().getTime() + 86_400_000;
