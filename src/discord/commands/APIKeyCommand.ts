@@ -120,7 +120,7 @@ export const APIKeyCommand: Command | null = API_KEY_COMMAND_NAME ? {
         }
 
         if (!interaction.memberPermissions?.has('Administrator')) {
-            interaction.followUp('Only administrator accounts can use this command.');
+            await interaction.followUp('Only administrator accounts can use this command.');
             return;
         }
 

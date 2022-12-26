@@ -2,7 +2,7 @@ import {Configuration, OpenAIApi} from "openai";
 import {db} from "../database/db";
 import {getEnv} from "../utils/GetEnv";
 import {getConfig} from "./config";
-import {MAIN_SERVER_ID, mainServerId} from "./MainServerId";
+import {mainServerId} from "./MainServerId";
 
 export const OpenAICache: Record<string, OpenAIApi | undefined> = {};
 

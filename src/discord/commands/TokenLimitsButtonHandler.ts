@@ -1,5 +1,6 @@
 import {ButtonCommand} from "../ButtonCommand";
-import {OpenAIAPIKeyModal, TokenLimitsModal} from "./TokenLimitsModal";
+import {TokenLimitsModal} from "./TokenLimitsModal";
+import {OpenAIAPIKeyModal} from "./OpenAIAPIKeyModal";
 
 export const TokenLimitsButtonHandler: ButtonCommand = {
     id: 'SET-TOKEN-LIMITS',

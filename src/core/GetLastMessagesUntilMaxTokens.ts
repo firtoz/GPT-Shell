@@ -1,12 +1,16 @@
 import {MessageHistoryItem} from "./MessageHistoryItem";
+import _ from 'lodash';
+import {messageToPromptPart} from "./ChatGPTConversation";
+import {encodeLength} from "./EncodeLength";
 
-export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryItem> & Pick<MessageHistoryItem, 'numTokens'>)>(
-    messageHistory: T[],
+export const getLastMessagesUntilMaxTokens = (
+    messageHistory: MessageHistoryItem[],
     maxTokens: number,
-): T[] => {
-    let sum = 0;
+    includePartial: boolean = false,
+): MessageHistoryItem[] => {
+    let remainingTokens = maxTokens;
 
-    if (messageHistory.length < 1) {
+    if (messageHistory.length < 2) {
         return messageHistory;
     }
 
@@ -16,14 +20,31 @@ export const getLastMessagesUntilMaxTokens = <T extends (Partial<MessageHistoryI
     }
 
     while (i >= 0) {
-        let current = messageHistory[i];
-        if (sum + current.numTokens <= maxTokens) {
-            sum += current.numTokens;
-        } else {
+        const current = messageHistory[i];
+
+        if (remainingTokens - current.numTokens < 0) {
             break;
         }
+
+        remainingTokens -= current.numTokens;
         i--;
     }
 
-    return messageHistory.slice(i + 1);
+    const chosenItems = messageHistory.slice(i + 1);
+
+    if (includePartial && i >= 0 && remainingTokens > 50) {
+        const lastMessageClone = _.cloneDeep(messageHistory[i]);
+
+        while (lastMessageClone.content.length > 50) {
+            if (remainingTokens - lastMessageClone.numTokens >= 0) {
+                return [lastMessageClone].concat(chosenItems);
+            }
+
+            lastMessageClone.content = '<TRUNCATED>' + lastMessageClone.content.slice(50);
+            const prompt = messageToPromptPart(lastMessageClone);
+            lastMessageClone.numTokens = encodeLength(prompt);
+        }
+    }
+
+    return chosenItems;
 }

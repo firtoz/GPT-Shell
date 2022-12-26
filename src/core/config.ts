@@ -3,6 +3,8 @@ import _ from 'lodash';
 import {ModelName} from "./ModelInfo";
 import {getEnv} from "../utils/GetEnv";
 import {PineconeConfigOpts} from "./pinecone";
+import {logMessage} from "../utils/logMessage";
+import {config} from "dotenv";
 
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null,

@@ -70,11 +70,6 @@ function sanitiseStringForRegex(input: string) {
     return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
 }
 
-const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
-
-if (!MAIN_SERVER_ID) {
-    throw new Error('Need MAIN_SERVER_ID env variable.');
-}
 
 const messageFormattedDateTime = (date: Date) => {
     return date.toLocaleString('default', {
@@ -449,10 +444,30 @@ ${JSON.stringify(debugInfo, null, '  ')}
                 toDelete = param;
             }
 
-            const deleted = this.messageHistory.splice(this.messageHistory.length - toDelete);
+            const deletedIndices = this.messageHistory.splice(this.messageHistory.length - toDelete);
+            const pinecone = await getPineconeClient();
+            if (pinecone != null) {
+                const embedIdsToDelete = deletedIndices
+                    .map(id => this.messageHistoryMap[id].embedding)
+                    .filter(item => item !== null) as string[];
+
+                try {
+                    await pinecone.delete({
+                        ids: embedIdsToDelete,
+                    });
+
+                    logMessage('Deleted ids from pinecone:', embedIdsToDelete);
+                } catch (e) {
+                    logMessage('Failed to delete from pinecone: ', e);
+                }
+            }
+
+            for (const id of deletedIndices) {
+                delete this.messageHistoryMap[id];
+            }
 
             await trySendingMessage(channel, {
-                content: `Deleted: \n${deleted.length} message(s).`,
+                content: `Deleted: \n${deletedIndices.length} message(s).`,
             });
 
             await this.persist();
@@ -748,9 +763,9 @@ ${messageToPromptPart(item.message)}`;
         const numInitialPromptTokens = encodeLength(initialPrompt);
         const currentResponseTokens = encodeLength(latestResponseText);
 
-        const inputTokens = encodeLength(input);
+        const inputMessageItem = await this.createHumanMessage(openai, user, input);
 
-        const newMessageItem = await this.createHumanMessage(openai, user, input);
+        const inputTokens = encodeLength(messageToPromptPart(inputMessageItem));
 
         let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
 
@@ -761,15 +776,16 @@ ${messageToPromptPart(item.message)}`;
             // use only messages, it's simpler
 
             return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
-${allMessagesInHistory.concat(newMessageItem).map(messageToPromptPart).join('\n')}
+${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\n')}
 [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
         }
 
-        const TOKENS_FOR_RECENT_MESSAGES = Math.min(config.maxTokensForRecentMessages, availableTokens);
+        const tokensForRecentMessages = Math.min(config.maxTokensForRecentMessages, availableTokens);
 
         const latestMessages = getLastMessagesUntilMaxTokens(
-            allMessagesInHistory.concat(newMessageItem),
-            TOKENS_FOR_RECENT_MESSAGES
+            allMessagesInHistory,
+            tokensForRecentMessages,
+            true,
         );
 
         if (!relevancyCheckCache.searchPerformed) {
@@ -778,7 +794,7 @@ ${allMessagesInHistory.concat(newMessageItem).map(messageToPromptPart).join('\n'
 
             const relevantMessageInput = last4
                 .map(item => item.content)
-                .concat(newMessageItem.content)
+                .concat(inputMessageItem.content)
                 .join('\n');
 
             const relevantMessages = await this.getRelevantMessages(user, openai, relevantMessageInput, 0.05);
@@ -793,25 +809,32 @@ ${allMessagesInHistory.concat(newMessageItem).map(messageToPromptPart).join('\n'
         }
 
 
-        const newRelevantMessages = relevancyCheckCache.results.filter(item => !latestMessages.find(message => message.id === item.message.id));
+        const unseenRelevantMessages = relevancyCheckCache
+            .results
+            .filter(item => !latestMessages.find(message => message.id === item.message.id));
+
+        const latestMessagesPlusNewMessage = latestMessages.concat(inputMessageItem);
 
         // get top N until MAX_ALLOWED_TOKENS is reached?
-        const usedTokensFromMessages = latestMessages.reduce((sum, item) => sum + item.numTokens, 0);
+        const usedTokensFromMessages = latestMessagesPlusNewMessage
+            .reduce((sum, item) => sum + item.numTokens, 0);
 
         availableTokens -= usedTokensFromMessages;
 
-        let numRelevantInclude = 0;
-
-        for (const relevantMessage of newRelevantMessages) {
+        const includedRelevantMessages: RelevancyResult[] = [];
+        for (const relevantMessage of unseenRelevantMessages) {
             if (relevantMessage.message.numTokens < availableTokens) {
-                numRelevantInclude++;
+                includedRelevantMessages.push(relevantMessage);
                 availableTokens -= relevantMessage.message.numTokens;
-            } else {
+            }
+
+            if (availableTokens < 50) {
                 break;
             }
         }
 
-        const includedRelevantMessages = newRelevantMessages.slice(0, numRelevantInclude).sort((a, b) => a.match.index - b.match.index);
+        includedRelevantMessages
+            .sort((a, b) => a.match.index - b.match.index);
 
         let relevantPrefix: string;
         let relevantSuffix: string;
@@ -824,11 +847,14 @@ ${allMessagesInHistory.concat(newMessageItem).map(messageToPromptPart).join('\n'
             relevantSuffix = 'Recent history:';
         }
 
+        const latestMessagesAndCurrentPrompt = latestMessagesPlusNewMessage.map(messageToPromptPart).join('\n');
         return `${initialPrompt}
-${relevantPrefix}
+${includedRelevantMessages.length > 0 ? `${relevantPrefix}
 ${includedRelevantMessages.map(item => messageToPromptPart(item.message)).join('\n')}
-${relevantSuffix}
-${latestMessages.map(messageToPromptPart).join('\n')}
+${includedRelevantMessages.length > 0 ? relevantSuffix : ''}
+` : ''}
+${latestMessagesAndCurrentPrompt}${debug ? `
+---LATEST LENGTH: ${encodeLength(latestMessagesAndCurrentPrompt)}---` : ''}
 [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
     }
 

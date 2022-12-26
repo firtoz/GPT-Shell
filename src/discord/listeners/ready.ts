@@ -5,11 +5,62 @@ import {InitializeThreads} from "./ready/initializeThreads";
 import {logMessage} from "../../utils/logMessage";
 import {db} from "../../database/db";
 import {getEnv} from "../../utils/GetEnv";
-import {getConfig} from "../../core/config";
+import {ConfigType, getConfig} from "../../core/config";
 import {mainServerId} from "../../core/MainServerId";
 import {getOpenAIForId} from "../../core/GetOpenAIForId";
 
-const MAIN_SERVER_ID = getEnv('MAIN_SERVER_ID');
+
+async function checkUsage(config: ConfigType) {
+    try {
+        const usage = await fetch("https://api.openai.com/v1/usage?date=2022-12-26", {
+            "credentials": "include",
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+                "Accept": "*/*",
+                "Accept-Language": "en-GB",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "no-cors",
+                "Sec-Fetch-Site": "same-site",
+                "Authorization": `Bearer ${config.openAIApiKey}`,
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache"
+            },
+            "referrer": "https://beta.openai.com/",
+            "method": "GET",
+            "mode": "cors"
+        });
+
+        const subscription = await fetch("https://api.openai.com/dashboard/billing/subscription", {
+            "credentials": "include",
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+                "Accept": "*/*",
+                "Accept-Language": "en-GB",
+                "Authorization": `Bearer ${config.openAIApiKey}`,
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-site"
+            },
+            "referrer": "https://beta.openai.com/",
+            "method": "GET",
+            "mode": "cors"
+        });
+
+        if (usage != null) {
+            const json = await usage.json();
+
+            logMessage(`Usage fetch`, json);
+        }
+
+        if (subscription != null) {
+            const json = await subscription.json();
+
+            logMessage(`Sub fetch`, json);
+        }
+    } catch (e) {
+        logMessage(`Usage fetch fail`, e);
+    }
+}
 
 export default (client: Client): void => {
     client.on(Events.ClientReady, async () => {
@@ -34,7 +85,7 @@ export default (client: Client): void => {
 
         logMessage(`Currently in ${guilds.size} guild${guilds.size !== 1 ? 's' : ''}.`);
 
-        await getConfig();
+        const config = await getConfig();
 
         let openaiSuccess = false;
 
@@ -52,6 +103,8 @@ export default (client: Client): void => {
         }
 
         logMessage(`Openai connection: ${openaiSuccess ? 'good' : 'bad'}!`);
+
+        // await checkUsage(config);
 
         StartListeningToMessages(client);
         InitializeThreads();
