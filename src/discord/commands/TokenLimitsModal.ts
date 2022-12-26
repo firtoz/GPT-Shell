@@ -3,7 +3,7 @@ import {EmbedBuilder, TextInputStyle} from "discord.js";
 import {getConfig, setConfig} from "../../core/config";
 import {parseInt} from "lodash";
 import {Configuration, OpenAIApi} from "openai";
-import {OpenAICache} from "../../core/GetOpenAIKeyForId";
+import {OpenAICache} from "../../core/GetOpenAIForId";
 import {mainServerId} from "../../core/MainServerId";
 import {logMessage} from "../../utils/logMessage";
 import {getGuildName} from "../discordClient";

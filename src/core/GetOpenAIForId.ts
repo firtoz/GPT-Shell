@@ -8,9 +8,9 @@ export const OpenAICache: Record<string, OpenAIApi | undefined> = {};
 
 const USE_SAME_API_KEY_FOR_ALL = getEnv('USE_SAME_API_KEY_FOR_ALL');
 
-export async function getOpenAIKeyForId(id: string): Promise<OpenAIApi | undefined> {
+export async function getOpenAIForId(id: string): Promise<OpenAIApi | undefined> {
     if (USE_SAME_API_KEY_FOR_ALL === 'true' && id !== mainServerId) {
-        return getOpenAIKeyForId(mainServerId);
+        return getOpenAIForId(mainServerId);
     }
 
     if (OpenAICache[id] === undefined) {

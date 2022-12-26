@@ -11,7 +11,7 @@ import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelName} from "./ModelInfo";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
-import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
+import {getOpenAIForId} from "./GetOpenAIForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
@@ -226,13 +226,13 @@ ${this.username}:`;
         logMessage(`PROMPT: by [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
         if (this.isDirectMessage) {
-            openai = await getOpenAIKeyForId(user.id);
+            openai = await getOpenAIForId(user.id);
         } else {
-            openai = await getOpenAIKeyForId(this.guildId);
+            openai = await getOpenAIForId(this.guildId);
 
             if (!openai) {
                 // fallback to user's key...
-                openai = await getOpenAIKeyForId(user.id);
+                openai = await getOpenAIForId(user.id);
             }
         }
 

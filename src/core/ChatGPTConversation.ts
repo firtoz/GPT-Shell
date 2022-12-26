@@ -7,7 +7,7 @@ import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelName} from "./ModelInfo";
-import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
+import {getOpenAIForId} from "./GetOpenAIForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
@@ -23,7 +23,8 @@ import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
-import {getConfig, getPineconeClient} from "./config";
+import {getConfig} from "./config";
+import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 
@@ -392,13 +393,13 @@ export class ChatGPTConversation extends BaseConversation {
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
         if (this.isDirectMessage) {
-            openai = await getOpenAIKeyForId(user.id);
+            openai = await getOpenAIForId(user.id);
         } else {
-            openai = await getOpenAIKeyForId(this.guildId);
+            openai = await getOpenAIForId(this.guildId);
 
             if (!openai) {
                 // fallback to user's key...
-                openai = await getOpenAIKeyForId(user.id);
+                openai = await getOpenAIForId(user.id);
             }
         }
 

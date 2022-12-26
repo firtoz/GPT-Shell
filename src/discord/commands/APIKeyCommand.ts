@@ -11,7 +11,7 @@ import {logMessage} from "../../utils/logMessage";
 import {AxiosError} from "axios";
 import {db} from "../../database/db";
 import {getGuildName} from "../discordClient";
-import {OpenAICache} from "../../core/GetOpenAIKeyForId";
+import {OpenAICache} from "../../core/GetOpenAIForId";
 
 const API_KEY_COMMAND_NAME = getEnv('API_KEY_COMMAND_NAME');
 
@@ -97,7 +97,7 @@ async function handleToken(interaction: CommandInteraction, isDM: boolean) {
 
         await interaction.followUp({
             content: 'Token Rejected.',
-        })
+        });
     }
 }
 

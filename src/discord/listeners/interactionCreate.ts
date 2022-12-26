@@ -28,16 +28,20 @@ async function handleModalSubmit(client: Client, interaction: ModalSubmitInterac
 
 export default (client: Client): void => {
     client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-        if (interaction.isCommand() || interaction.isContextMenuCommand()) {
-            return await handleSlashCommand(client, interaction);
-        }
+        try {
+            if (interaction.isCommand() || interaction.isContextMenuCommand()) {
+                return await handleSlashCommand(client, interaction);
+            }
 
-        if (interaction.isButton()) {
-            return await handleButtonCommand(client, interaction);
-        }
+            if (interaction.isButton()) {
+                return await handleButtonCommand(client, interaction);
+            }
 
-        if(interaction.isModalSubmit()) {
-            return await handleModalSubmit(client, interaction);
+            if(interaction.isModalSubmit()) {
+                return await handleModalSubmit(client, interaction);
+            }
+        } catch (e) {
+            logMessage('Cannot handle interaction: ', e);
         }
     });
 };
