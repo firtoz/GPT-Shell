@@ -68,7 +68,7 @@ Bot Token:
 
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
-- API_KEY_COMMAND_NAME: The name of the chat-gpt-openai-api-key command (if you want users to add the bot to their server)
+- CONFIG_COMMAND_NAME: The name of the config command (if you want users to be able to configure their bot setup)
 
 OpenAI API Key:
 - OPENAI_API_KEY: The API key for your OpenAI account
@@ -93,7 +93,7 @@ BOT_TOKEN=
 
 # Commands:
 COMMAND_NAME=chat-gpt
-# API_KEY_COMMAND_NAME=chat-gpt-openai-api-key # enable this if you want the bot to be installed in other servers.
+CONFIG_COMMAND_NAME=chat-gpt-config
 
 # OpenAI API Key:
 OPENAI_API_KEY=
