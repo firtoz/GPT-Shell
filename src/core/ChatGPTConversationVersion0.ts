@@ -265,7 +265,11 @@ ${JSON.stringify(debugInfo, null, '  ')}
             return;
         }
 
-        await channel.sendTyping();
+        try {
+            await channel.sendTyping();
+        } catch (e) {
+            logMessage(`${await this.getLinkableId()} Cannot send typing..`, e);
+        }
 
         const multi = new MultiMessage(channel, undefined, messageToReplyTo);
 

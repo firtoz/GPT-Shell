@@ -510,7 +510,12 @@ ${fullPrompt}
             return;
         }
 
-        await channel.sendTyping();
+
+        try {
+            await channel.sendTyping();
+        } catch (e) {
+            logMessage(`${await this.getLinkableId()} Cannot send typing..`, e);
+        }
 
         const multi = new MultiMessage(channel, undefined, messageToReplyTo);
 
@@ -535,13 +540,17 @@ ${fullPrompt}
 
         let promiseComplete = false;
 
-        const intervalId = setInterval(() => {
+        const intervalId = setInterval(async () => {
             if (promiseComplete) {
                 clearInterval(intervalId);
                 return;
             }
 
-            channel.sendTyping();
+            try {
+                await channel.sendTyping();
+            } catch (e) {
+                logMessage(`${await this.getLinkableId()} Cannot send typing..`, e);
+            }
         }, 5000);
 
         // When the promise completes, set the variable to true
