@@ -739,7 +739,6 @@ ${messageToPromptPart(item.message)}`;
         debug: boolean = false,
     ) {
         const initialPrompt = getOriginalPrompt(this.username);
-        // const config = await getConfig();
         const modelInfo = config.modelInfo[this.model];
 
         const numInitialPromptTokens = encodeLength(initialPrompt);
@@ -837,7 +836,7 @@ ${includedRelevantMessages.length > 0 ? relevantSuffix : ''}
 ` : ''}
 ${latestMessagesAndCurrentPrompt}${debug ? `
 ---LATEST LENGTH: ${encodeLength(latestMessagesAndCurrentPrompt)}---` : ''}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
     }
 
     private async getRelevantMessages(user: User, openai: OpenAIApi, input: string, orderWeight: number):
