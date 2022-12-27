@@ -77,9 +77,11 @@ const getConfigForIdInternal = async (id: string) => {
         defaultClone.openAIApiKey = await db.get<string>(`CONFIG-API-KEY-${id}`);
     }
 
-    const configFromDB = await db.get<ServerConfigType>(`BOT-CONFIG-GUILD-${id}`);
+    const configFromDB = await db.get<ServerConfigType>(`BOT-CONFIG-FOR-${id}`);
     if (configFromDB) {
         return Object.assign(defaultClone, configFromDB);
+    } else {
+        await setConfigForId(id, defaultClone);
     }
 
     return defaultClone;
@@ -96,5 +98,5 @@ export const getConfigForId = async (id: string) => {
 export const setConfigForId = async (id: string, value: ServerConfigType) => {
     serverConfigState[id] = value;
 
-    return await db.set(`BOT-CONFIG-GUILD-${id}`, value);
+    return await db.set(`BOT-CONFIG-FOR-${id}`, value);
 }

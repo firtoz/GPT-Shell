@@ -75,8 +75,6 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
 (${user.username}|${user.id}): ${message}${END_OF_PROMPT}
 ${this.username}:`;
 
-        // const config = await getConfig();
-
         let newHistory = this.currentHistory + newPromptText;
 
         let finished = false;

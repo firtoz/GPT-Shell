@@ -62,7 +62,9 @@ export const ConfigCommand: Command | null = CONFIG_COMMAND_NAME ? {
 
         const adminPingId = getEnv('ADMIN_PING_ID');
 
-        if (commandInteraction.user.id === adminPingId) {
+        let {configId, isDM} = await getConfigIdForInteraction(commandInteraction);
+
+        if (commandInteraction.user.id === adminPingId && !isDM && configId === mainServerId) {
             const config = await getConfig();
 
             await commandInteraction.followUp({
@@ -73,7 +75,7 @@ export const ConfigCommand: Command | null = CONFIG_COMMAND_NAME ? {
                         .setFields([
                             {
                                 name: 'Pinecone:',
-                                value: `${config.pineconeOptions ? '✅ Enabled!' : '☐ Disabled!'}
+                                value: `${config.pineconeOptions ? '✅ Enabled!' : '❌ Disabled!'}
                             
 Pinecone is used to have long-term memory. It stores information about all of the past messages in conversations which can then be queried.
 
@@ -108,7 +110,6 @@ As new messages are sent, they will be stored in long term memory one by one, so
         }
 
         if (commandInteraction.channelId) {
-            let {configId, isDM} = await getConfigIdForInteraction(commandInteraction);
 
             if (!isDM) {
                 if (!commandInteraction.memberPermissions?.has('Administrator')) {
@@ -124,7 +125,7 @@ As new messages are sent, they will be stored in long term memory one by one, so
             if (configId != null) {
                 const config = await getConfigForId(configId);
 
-                logMessage(`Showing config for [${isDM ? `User:${commandInteraction.user.tag}`:
+                logMessage(`Showing config for [${isDM ? `User:${commandInteraction.user.tag}` :
                     `Server:${await getGuildName(configId)}, by User:${commandInteraction.user.tag}`}]`);
 
                 const fields = [
@@ -154,7 +155,7 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                     fields.push(
                         {
                             name: 'OpenAI API Key',
-                            value: config.openAIApiKey ?? '❌ Missing!',
+                            value: config.openAIApiKey ? `✅ ${config.openAIApiKey.slice(0, 3)}${config.openAIApiKey.slice(3).replace(/./g, 'x')}` : '❌ Missing!',
                         }
                     );
 
@@ -170,7 +171,7 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                     ephemeral: true,
                     embeds: [
                         new EmbedBuilder()
-                            .setTitle(`${client.user!.username} ${isDM ? 'USER' : `SERVER`} Config`)
+                            .setTitle(`${isDM ? `USER [${commandInteraction.user.tag}]` : `SERVER [${await getGuildName(configId)}]`} Config`)
                             .setFields(fields)
                     ],
                     components,
