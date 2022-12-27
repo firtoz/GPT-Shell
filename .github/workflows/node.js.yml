@@ -11,6 +11,8 @@ on:
 
 jobs:
   build:
+    env:
+      MAIN_SERVER_ID=1049538754202828880
 
     runs-on: ubuntu-latest
 
