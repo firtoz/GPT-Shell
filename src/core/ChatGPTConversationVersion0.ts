@@ -18,7 +18,7 @@ import {BaseConversation} from "./BaseConversation";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {ChatGPTConversation} from "./ChatGPTConversation";
-import {getConfig} from "./config";
+import {getConfig, getConfigForId, ServerConfigType} from "./config";
 
 
 export class ChatGPTConversationVersion0 extends BaseConversation {
@@ -65,6 +65,7 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
     }
 
     private async SendPromptToGPTChat(
+        config: ServerConfigType,
         openai: OpenAIApi,
         user: User,
         message: string,
@@ -74,7 +75,7 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
 (${user.username}|${user.id}): ${message}${END_OF_PROMPT}
 ${this.username}:`;
 
-        const config = await getConfig();
+        // const config = await getConfig();
 
         let newHistory = this.currentHistory + newPromptText;
 
@@ -225,6 +226,8 @@ ${this.username}:`;
 
         logMessage(`PROMPT: by [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
+        const serverConfig = await getConfigForId(this.isDirectMessage ? user.id : this.guildId);
+
         if (this.isDirectMessage) {
             openai = await getOpenAIForId(user.id);
         } else {
@@ -273,6 +276,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         }
 
         await this.SendPromptToGPTChat(
+            serverConfig,
             openai,
             user,
             inputValue,

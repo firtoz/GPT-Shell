@@ -1,7 +1,9 @@
 import {defineModal} from "./DefineModal";
-import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, setConfig} from "../../core/config";
+import {EmbedBuilder, ModalSubmitInteraction, TextInputStyle} from "discord.js";
+import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../core/config";
 import {parseInt} from "lodash";
+import {retrieveConversation} from "../../core/RetrieveConversation";
+import {getConfigIdForInteraction} from "./ConfigCommand";
 
 export const TokenLimitsModal = defineModal(
     'TOKEN-LIMIT-MODAL',
@@ -20,8 +22,13 @@ export const TokenLimitsModal = defineModal(
         placeholder: '',
         required: false,
         style: TextInputStyle.Short,
-    }], async () => {
-        const config = await getConfig();
+    }], async (interaction) => {
+        const {configId} = await getConfigIdForInteraction(interaction);
+        if (!configId) {
+            throw new Error('No config id found for interaction...');
+        }
+
+        const config = await getConfigForId(configId);
 
         return {
             maxTokensForRecentMessages: `${config.maxTokensForRecentMessages || 0}`,
@@ -30,9 +37,15 @@ export const TokenLimitsModal = defineModal(
     },
     async (values, submitInteraction) => {
         try {
-            const {maxTokensForRecentMessages, maxAllowedTokens} = values;
 
-            const config = await getConfig();
+            const {configId} = await getConfigIdForInteraction(submitInteraction);
+            if (!configId) {
+                throw new Error('No config id found for interaction...');
+            }
+
+            const config = await getConfigForId(configId);
+
+            const {maxTokensForRecentMessages, maxAllowedTokens} = values;
 
             const maxTokensForRecentMessagesValue = parseInt(maxTokensForRecentMessages ?? '0');
             const maxAllowedTokensValue = parseInt(maxAllowedTokens ?? '0');
@@ -41,7 +54,7 @@ export const TokenLimitsModal = defineModal(
                 config.maxTokensForRecentMessages = maxTokensForRecentMessagesValue;
                 config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS = maxAllowedTokensValue;
 
-                await setConfig(config);
+                await setConfigForId(configId, config);
 
                 await submitInteraction.followUp({
                     content: '',

@@ -23,7 +23,7 @@ import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
-import {getConfig} from "./config";
+import {getConfig, getConfigForId, ServerConfigType} from "./config";
 import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
@@ -231,11 +231,17 @@ export class ChatGPTConversation extends BaseConversation {
                 await pinecone.upsert({
                     vectors: [vector],
                 });
-            } catch (e) {
-                const adminPingId = getEnv('ADMIN_PING_ID')
-                logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not create embedding... ${
-                        await this.getLinkableId()}`,
-                    e);
+            } catch (e: any) {
+                if (e.isAxiosError) {
+                    // response = e.response;
+                    logMessage(`Could not create embedding... ${await this.getLinkableId()}`, e.response.data);
+                } else {
+                    const adminPingId = getEnv('ADMIN_PING_ID')
+                    logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not create embedding... ${
+                            await this.getLinkableId()}`,
+                        e);
+                }
+
 
                 embeddingId = null;
             }
@@ -244,13 +250,14 @@ export class ChatGPTConversation extends BaseConversation {
     }
 
     private async SendPromptToGPTChat(
+        config: ServerConfigType,
         openai: OpenAIApi,
         user: User,
         message: string,
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
 
-        const config = await getConfig();
+        // const config = await getConfig();
 
         const modelInfo = config.modelInfo[this.model];
 
@@ -278,7 +285,7 @@ export class ChatGPTConversation extends BaseConversation {
 // ${messages.map(messageToPromptPart).join('\n')}
 // [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
 
-                const fullPrompt = await this.getFullPrompt(openai, user, message, latestResponseText, relevancyResultsCache);
+                const fullPrompt = await this.getFullPrompt(config, openai, user, message, latestResponseText, relevancyResultsCache);
 
                 // const newMessageItemEmbedding = newMessageItem.embedding;
 
@@ -387,6 +394,8 @@ export class ChatGPTConversation extends BaseConversation {
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
+        const serverConfig = await getConfigForId(this.isDirectMessage ? user.id : this.guildId);
+
         if (this.isDirectMessage) {
             openai = await getOpenAIForId(user.id);
         } else {
@@ -479,7 +488,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         if (inputValue.startsWith(promptPrefix) && user.id === adminPingId) {
             const input = inputValue.slice(promptPrefix.length);
 
-            const fullPrompt = await this.getFullPrompt(openai, user, input, '', {
+            const fullPrompt = await this.getFullPrompt(serverConfig, openai, user, input, '', {
                 searchPerformed: false,
                 results: [],
             }, true);
@@ -539,6 +548,7 @@ ${fullPrompt}
         }
 
         const multiPromise = this.SendPromptToGPTChat(
+            serverConfig,
             openai,
             user,
             inputValue,
@@ -749,6 +759,7 @@ ${messageToPromptPart(item.message)}`;
     }
 
     private async getFullPrompt(
+        config: ServerConfigType,
         openai: OpenAIApi,
         user: User,
         input: string,
@@ -757,7 +768,7 @@ ${messageToPromptPart(item.message)}`;
         debug: boolean = false,
     ) {
         const initialPrompt = getOriginalPrompt(this.username);
-        const config = await getConfig();
+        // const config = await getConfig();
         const modelInfo = config.modelInfo[this.model];
 
         const numInitialPromptTokens = encodeLength(initialPrompt);

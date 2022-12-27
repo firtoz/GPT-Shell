@@ -5,12 +5,12 @@ import {InitializeThreads} from "./ready/initializeThreads";
 import {logMessage} from "../../utils/logMessage";
 import {db} from "../../database/db";
 import {getEnv} from "../../utils/GetEnv";
-import {ConfigType, getConfig} from "../../core/config";
+import {ConfigType, getConfig, getConfigForId, ServerConfigType} from "../../core/config";
 import {mainServerId} from "../../core/MainServerId";
 import {getOpenAIForId} from "../../core/GetOpenAIForId";
 
 
-async function checkUsage(config: ConfigType) {
+async function checkUsage(config: ServerConfigType) {
     try {
         const usage = await fetch("https://api.openai.com/v1/usage?date=2022-12-26", {
             "credentials": "include",
@@ -85,7 +85,8 @@ export default (client: Client): void => {
 
         logMessage(`Currently in ${guilds.size} guild${guilds.size !== 1 ? 's' : ''}.`);
 
-        const config = await getConfig();
+        await getConfig();
+        await getConfigForId(mainServerId);
 
         let openaiSuccess = false;
 

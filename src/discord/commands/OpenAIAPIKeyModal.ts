@@ -1,11 +1,13 @@
 import {defineModal} from "./DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, setConfig} from "../../core/config";
+import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../core/config";
 import {Configuration, OpenAIApi} from "openai";
 import {OpenAICache} from "../../core/GetOpenAIForId";
 import {mainServerId} from "../../core/MainServerId";
 import {AxiosError} from "axios";
 import {logMessage} from "../../utils/logMessage";
+import {getConfigIdForInteraction} from "./ConfigCommand";
+import {getGuildName} from "../discordClient";
 
 export const OpenAIAPIKeyModal = defineModal(
     'OPENAI-API-KEY-MODAL',
@@ -17,8 +19,13 @@ export const OpenAIAPIKeyModal = defineModal(
         placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxx',
         required: true,
         style: TextInputStyle.Short,
-    }], async () => {
-        const config = await getConfig();
+    }], async (interaction) => {
+        const {configId} = await getConfigIdForInteraction(interaction);
+        if (!configId) {
+            throw new Error('No config id found for interaction...');
+        }
+
+        const config = await getConfigForId(configId);
 
         return {
             apiKey: config.openAIApiKey ?? '',
@@ -27,8 +34,6 @@ export const OpenAIAPIKeyModal = defineModal(
     async (values, submitInteraction) => {
         try {
             const {apiKey} = values;
-
-            const config = await getConfig();
 
             if (apiKey == null || apiKey.length < 2) {
                 throw new Error(`Invalid token supplied: '${apiKey}'.`);
@@ -43,11 +48,21 @@ export const OpenAIAPIKeyModal = defineModal(
                 const data = models.data;
 
                 if (data != null) {
-                    OpenAICache[mainServerId] = api;
+                    const {configId, isDM} = await getConfigIdForInteraction(submitInteraction);
+                    if (!configId) {
+                        throw new Error('No config id found for interaction...');
+                    }
+
+                    logMessage(`GOOD token supplied for [${isDM ? `User:${submitInteraction.user.tag}`:
+                        `Server:${await getGuildName(configId)}`}]`);
+
+                    OpenAICache[configId] = api;
+
+                    const config = await getConfigForId(configId);
 
                     config.openAIApiKey = apiKey;
 
-                    await setConfig(config);
+                    await setConfigForId(configId, config);
 
                     await submitInteraction.followUp({
                         content: '',
