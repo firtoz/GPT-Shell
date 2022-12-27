@@ -1,4 +1,4 @@
-import {AnyThreadChannel, DMChannel, EmbedBuilder, Message, TextBasedChannel, TextChannel} from "discord.js";
+import {EmbedBuilder, Message, TextBasedChannel} from "discord.js";
 import {divideTextToSections} from "./DivideTextToSections";
 import {logMessage} from "../utils/logMessage";
 

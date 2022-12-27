@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
 // @ts-ignore
@@ -8,18 +8,17 @@ import {CreateCompletionResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
-import {ModelInfo, ModelName} from "./ModelInfo";
+import {ModelName} from "./ModelInfo";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
-import {getOpenAIKeyForId} from "./GetOpenAIKeyForId";
+import {getOpenAIForId} from "./GetOpenAIForId";
 import {trySendingMessage} from "./TrySendingMessage";
-import {discordClient, getGuildName} from "../discord/discordClient";
-import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
-import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
+import {getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {ChatGPTConversation} from "./ChatGPTConversation";
+import {getConfigForId, ServerConfigType} from "./config";
 
 
 export class ChatGPTConversationVersion0 extends BaseConversation {
@@ -66,6 +65,7 @@ export class ChatGPTConversationVersion0 extends BaseConversation {
     }
 
     private async SendPromptToGPTChat(
+        config: ServerConfigType,
         openai: OpenAIApi,
         user: User,
         message: string,
@@ -84,18 +84,18 @@ ${this.username}:`;
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
 
             let newHistoryTokens = encodeLength(newHistory);
-            const maxallowedtokens = ModelInfo[this.model].MAX_ALLOWED_TOKENS;
-            if (newHistoryTokens > maxallowedtokens) {
+            const maxAllowedTokens = config.modelInfo[this.model].MAX_ALLOWED_TOKENS;
+            if (newHistoryTokens > maxAllowedTokens) {
                 const allPrompts = newHistory.split(END_OF_PROMPT);
                 const userPrompts = allPrompts.slice(3);
 
                 let numPromptsToRemove = 0;
                 let totalTokens = 0;
 
-                const tokensToRemove = newHistoryTokens - maxallowedtokens;
+                const tokensToRemove = newHistoryTokens - maxAllowedTokens;
                 logMessage(`${await this.getLinkableId()} need to remove tokens...`, {
                     total: newHistoryTokens,
-                    maxallowedtokens,
+                    maxallowedtokens: maxAllowedTokens,
                     tokensToRemove,
                 })
 
@@ -118,7 +118,7 @@ ${this.username}:`;
 
 
             try {
-                const maxTokens = ModelInfo[this.model].MAX_TOKENS_PER_RESPONSE;
+                const maxTokens = config.modelInfo[this.model].MAX_TOKENS_PER_RESPONSE;
 
                 // https://www.npmjs.com/package/compute-cosine-similarity
 
@@ -224,14 +224,16 @@ ${this.username}:`;
 
         logMessage(`PROMPT: by [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
+        const serverConfig = await getConfigForId(this.isDirectMessage ? user.id : this.guildId);
+
         if (this.isDirectMessage) {
-            openai = await getOpenAIKeyForId(user.id);
+            openai = await getOpenAIForId(user.id);
         } else {
-            openai = await getOpenAIKeyForId(this.guildId);
+            openai = await getOpenAIForId(this.guildId);
 
             if (!openai) {
                 // fallback to user's key...
-                openai = await getOpenAIKeyForId(user.id);
+                openai = await getOpenAIForId(user.id);
             }
         }
 
@@ -272,6 +274,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         }
 
         await this.SendPromptToGPTChat(
+            serverConfig,
             openai,
             user,
             inputValue,

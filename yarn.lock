@@ -1220,6 +1220,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash@npm:^4":
+  version: 4.14.191
+  resolution: "@types/lodash@npm:4.14.191"
+  checksum: ba0d5434e10690869f32d5ea49095250157cae502f10d57de0a723fd72229ce6c6a4979576f0f13e0aa9fbe3ce2457bfb9fa7d4ec3d6daba56730a51906d1491
+  languageName: node
+  linkType: hard
+
 "@types/minimatch@npm:*":
   version: 5.1.2
   resolution: "@types/minimatch@npm:5.1.2"
@@ -2080,6 +2087,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "gpt-shell@workspace:."
   dependencies:
+    "@types/lodash": ^4
     "@types/pnpapi": ^0
     "@types/rimraf": ^3
     "@types/uuid": ^9
@@ -2090,14 +2098,17 @@ __metadata:
     discord.js: ^14.7.1
     dotenv: ^16.0.3
     gpt3-tokenizer: ^1.1.4
+    lodash: ^4.17.21
     mongodb: ^4.12.1
     nodemon: ^2.0.20
     openai: ^3.1.0
+    pinecone-client: ^1.0.0
     pnpapi: ^0.0.0
     rimraf: ^3.0.2
     ts-node: ^10.9.1
     ts-node-dev: ^2.0.0
     ts-pegjs: ^2.1.0
+    ts-toolbelt: ^9.6.0
     tsc: ^2.0.4
     typescript: 4.9.3
     uuid: ^9.0.0
@@ -2312,6 +2323,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ky@npm:^0.32.2":
+  version: 0.32.2
+  resolution: "ky@npm:0.32.2"
+  checksum: 0ca78c4fe7b143ad527c6f79e3f77b529a55d5efe7c4a400e5937ddce641f4b672d77fd18e59b59573c77df48ba71095823a0da4c7701515d4333376f06a62d9
+  languageName: node
+  linkType: hard
+
 "local-pkg@npm:^0.4.2":
   version: 0.4.2
   resolution: "local-pkg@npm:0.4.2"
@@ -2330,6 +2348,13 @@ __metadata:
   version: 4.5.0
   resolution: "lodash.uniqwith@npm:4.5.0"
   checksum: d49a4565ed64efd86674127d321622673c29cde3e060baebc0f30372f22886c61b2ead44709db8c890053db1b9660e8ed689689812c1a485eb5703caa94d1150
+  languageName: node
+  linkType: hard
+
+"lodash@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+  checksum: eb835a2e51d381e561e508ce932ea50a8e5a68f4ebdd771ea240d3048244a8d13658acbd502cd4829768c56f2e16bdd4340b9ea141297d472517b83868e677f7
   languageName: node
   linkType: hard
 
@@ -2729,6 +2754,15 @@ __metadata:
   version: 2.3.1
   resolution: "picomatch@npm:2.3.1"
   checksum: 050c865ce81119c4822c45d3c84f1ced46f93a0126febae20737bd05ca20589c564d6e9226977df859ed5e03dc73f02584a2b0faad36e896936238238b0446cf
+  languageName: node
+  linkType: hard
+
+"pinecone-client@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "pinecone-client@npm:1.0.0"
+  dependencies:
+    ky: ^0.32.2
+  checksum: 07fd4e2126128d766fc1aa1d996f63273a5c35880a20e9a2e5317c71a2230cd02e96aaa6e7db86041103f605cd916179cb5397899de74f53416f1ba5781f0058
   languageName: node
   linkType: hard
 
@@ -3302,6 +3336,13 @@ __metadata:
   bin:
     tspegjs: src/cli.js
   checksum: c726a086cba264e0c607a661a64fa5f9dd721d7779f44525d82f1536e6fdac6f70f866a347b858a41a28d2d2db8043d8751f4427b1cbabff0d5e74ede0d9fc95
+  languageName: node
+  linkType: hard
+
+"ts-toolbelt@npm:^9.6.0":
+  version: 9.6.0
+  resolution: "ts-toolbelt@npm:9.6.0"
+  checksum: 9f35fd95d895a5d32ea9fd2e532a695b0bae6cbff6832b77292efa188a0ed1ed6e54f63f74a8920390f3d909a7a3adb20a144686372a8e78b420246a9bd3d58a
   languageName: node
   linkType: hard
 

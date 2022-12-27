@@ -59,7 +59,7 @@ The following environment variables are required for GPT-Shell to work properly.
 MongoDB:
 - MONGODB_URI: The MongoDB connection string.
   - Should look something like this: mongodb+srv://<username>:<password><cluster>.<something>.mongodb.net/?retryWrites=true&w=majority
-- DB_NAME: The name of the collection in MongoDB
+- DB_NAME: The name of the collection in MongoDB. You can use `CHAT_DB` or anything you like.
 
 Bot Token:
 - BOT_TOKEN: The Discord bot token
@@ -68,7 +68,7 @@ Bot Token:
 
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
-- API_KEY_COMMAND_NAME: The name of the chat-gpt-openai-api-key command (if you want users to add the bot to their server)
+- CONFIG_COMMAND_NAME: The name of the config command (if you want users to be able to configure their bot setup)
 
 OpenAI API Key:
 - OPENAI_API_KEY: The API key for your OpenAI account
@@ -93,7 +93,7 @@ BOT_TOKEN=
 
 # Commands:
 COMMAND_NAME=chat-gpt
-# API_KEY_COMMAND_NAME=chat-gpt-openai-api-key # enable this if you want the bot to be installed in other servers.
+CONFIG_COMMAND_NAME=chat-gpt-config
 
 # OpenAI API Key:
 OPENAI_API_KEY=
@@ -104,6 +104,33 @@ LOG_CHANNEL_ID=
 MAIN_SERVER_INVITE=
 USE_SAME_API_KEY_FOR_ALL=
 ```
+
+
+## Long-Term Memory
+Starting from 2.0.0, the bot has the capacity to have a long-term memory.
+
+This functionality is experimental, but internal testing shows that it works quite well for typical conversation.
+
+Does not work so well if the conversation has long pieces of code, because of token limitations.
+
+How it works:
+- the bot creates [embeddings](https://openai.com/blog/new-and-improved-embedding-model/) for every message in the conversation
+- if the conversation is short, all the conversation history is included in the prompt
+- if the conversation is long enough, when a new message is sent, that message's embedding is compared to the conversation history, and only the most relevant messages will be included in the prompt.
+
+To be able to set this up, use the config command on the main server:
+
+```
+/chat-gpt-config
+```
+
+![config.png](config.png)
+
+Then enter the pinecone configuration details.
+
+If you did it correctly, you should see something like this:
+
+![config-set.png](config-set.png)
 
 ## Contributions
 

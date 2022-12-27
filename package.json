@@ -1,6 +1,6 @@
 {
   "name": "gpt-shell",
-  "version": "0.0.0",
+  "version": "2.0.0",
   "description": "",
   "scripts": {
     "dev": "nodemon ./src/index.ts",
@@ -20,6 +20,7 @@
   "types": "lib/index.d.ts",
   "main": "lib/index.js",
   "devDependencies": {
+    "@types/lodash": "^4",
     "@types/pnpapi": "^0",
     "@types/rimraf": "^3",
     "@types/uuid": "^9",
@@ -41,9 +42,12 @@
     "discord.js": "^14.7.1",
     "dotenv": "^16.0.3",
     "gpt3-tokenizer": "^1.1.4",
+    "lodash": "^4.17.21",
     "mongodb": "^4.12.1",
     "openai": "^3.1.0",
+    "pinecone-client": "^1.0.0",
     "pnpapi": "^0.0.0",
+    "ts-toolbelt": "^9.6.0",
     "tsc": "^2.0.4",
     "uuid": "^9.0.0"
   }

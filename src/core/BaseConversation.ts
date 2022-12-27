@@ -1,19 +1,11 @@
 import {db} from "../database/db";
 import {logMessage} from "../utils/logMessage";
-import {
-    Collection,
-    DiscordAPIError,
-    Guild,
-    GuildBasedChannel,
-    Message,
-    TextBasedChannel,
-    User
-} from "discord.js";
+import {Collection, DiscordAPIError, Guild, GuildBasedChannel, Message, TextBasedChannel, User} from "discord.js";
 import {discordClient} from "../discord/discordClient";
-import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {conversationCache} from "./ConversationCache";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
+import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/messageReceivedInThread";
 
 const THREAD_PREFIX = `THREAD-`;
 
@@ -27,11 +19,11 @@ type GetThreadResponse = {
 };
 
 function createChannelLink(threadId: string) {
-    return `<#${threadId}> |${threadId}`;
+    return `<#${threadId}>|${threadId}`;
 }
 
 function createUserLink(creatorId: string) {
-    return `<@${creatorId}> |${creatorId}`;
+    return `<@${creatorId}>|${creatorId}`;
 }
 
 export abstract class BaseConversation {
@@ -131,13 +123,28 @@ export abstract class BaseConversation {
             }
         } else {
             const guild = await discordClient.guilds.fetch(conversation.guildId);
-            const threadId = conversation.threadId;
-            const channelLink = createChannelLink(threadId);
-
-            if(guild) {
-                location = `[[THREAD [${guild.name}][${channelLink}]]]`
+            const channelLink = createChannelLink(conversation.threadId);
+            const channel = await discordClient.channels.fetch(conversation.threadId);
+            if (channel) {
+                if (channel.isThread()) {
+                    if (guild) {
+                        location = `[[THREAD [${guild.name}][${channelLink}]]]`
+                    } else {
+                        location = `[[THREAD [${conversation.guildId}][${channelLink}]]]`
+                    }
+                } else {
+                    if (guild) {
+                        location = `[[CHANNEL [${guild.name}][${channelLink}]]]`
+                    } else {
+                        location = `[[CHANNEL [${conversation.guildId}][${channelLink}]]]`
+                    }
+                }
             } else {
-                location = `[[THREAD [${conversation.guildId}][${channelLink}]]]`
+                if (guild) {
+                    location = `[[UNKNOWN [${guild.name}][${channelLink}]]]`
+                } else {
+                    location = `[[UNKNOWN [${conversation.guildId}][${channelLink}]]]`
+                }
             }
         }
 

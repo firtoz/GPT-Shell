@@ -6,9 +6,10 @@ export type MessageHistoryItem = ({
 } | {
     type: 'response';
 }) & {
+    id: string;
     timestamp: number | undefined;
     username: string;
     content: string;
     numTokens: number;
-    embedding: null | CreateEmbeddingResponseDataInner[];
+    embedding: null | string;
 };

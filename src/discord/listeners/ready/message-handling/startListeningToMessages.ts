@@ -3,6 +3,7 @@ import {handleThread} from "./handleThread";
 import {handleDirectMessage} from "./handleDirectMessage";
 import {BaseConversation} from "../../../../core/BaseConversation";
 import {ConversationFactory} from "../../../../core/ConversationFactory";
+import {logMessage} from "../../../../utils/logMessage";
 
 
 export function StartListeningToMessages(client: Client<boolean>) {

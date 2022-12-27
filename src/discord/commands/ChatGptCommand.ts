@@ -15,7 +15,7 @@ import {discordClient, getGuildName} from "../discordClient";
 import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
 import {getDateString} from "../../utils/GetDateString";
 import {ModelName} from "../../core/ModelInfo";
-import {getOpenAIKeyForId} from "../../core/GetOpenAIKeyForId";
+import {getOpenAIForId} from "../../core/GetOpenAIForId";
 import {trySendingMessage} from "../../core/TrySendingMessage";
 import {BaseConversation} from "../../core/BaseConversation";
 import {ConversationFactory} from "../../core/ConversationFactory";
@@ -40,11 +40,11 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
-    let openAI = await getOpenAIKeyForId(interaction.guildId);
+    let openAI = await getOpenAIForId(interaction.guildId);
     if (!openAI) {
         if (!openAI) {
             // fallback to user's key...
-            openAI = await getOpenAIKeyForId(interaction.user.id);
+            openAI = await getOpenAIForId(interaction.user.id);
         }
         if (!openAI) {
             logMessage(`Could not find API key for server ${await getGuildName(interaction.guildId)}[${interaction.guildId}}] or user [[${interaction.user.username}|${interaction.user.id}]]`);
