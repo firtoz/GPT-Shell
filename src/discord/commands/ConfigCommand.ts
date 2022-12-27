@@ -62,7 +62,7 @@ export const ConfigCommand: Command | null = CONFIG_COMMAND_NAME ? {
 
         const adminPingId = getEnv('ADMIN_PING_ID');
 
-        let {configId, isDM} = await getConfigIdForInteraction(commandInteraction);
+        const {configId, isDM} = await getConfigIdForInteraction(commandInteraction);
 
         if (commandInteraction.user.id === adminPingId && !isDM && configId === mainServerId) {
             const config = await getConfig();
@@ -140,6 +140,20 @@ Max tokens for recent messages: ${config.maxTokensForRecentMessages}.
 If max tokens for recent messages are less than max tokens for prompt, then the rest of the tokens will be used for the longer term memory.`,
                     }
                 ];
+
+                if (!isDM) {
+                    fields.push(
+                        {
+                            name: 'Message Limits',
+                            value: `Maximum messages per user: ${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser}.
+                
+If you set a positive number for this value, the bot will respond only up to this number of messages from users.
+
+Users with the exception roles can send unlimited number of messages.
+
+Exception role: ${config.exceptionRoleIds.length > 0 ? config.exceptionRoleIds.map(id => `<@${id}>`) : 'undefined!'}`,
+                        });
+                }
 
                 const components = [
                     new ActionRowBuilder<ButtonBuilder>()

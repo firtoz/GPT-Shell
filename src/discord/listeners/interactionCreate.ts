@@ -21,7 +21,7 @@ async function handleModalSubmit(client: Client, interaction: ModalSubmitInterac
     try {
         await modalSubmit.run(client, interaction);
     } catch (e) {
-        logMessage(`Cannot run button command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
+        logMessage(`Cannot run modal submit command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
     }
     // return Promise.resolve(undefined);
 }

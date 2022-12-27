@@ -53,6 +53,8 @@ export type ServerConfigType = {
         MAX_TOKENS_PER_RESPONSE: number,
     }>;
     openAIApiKey: string | null;
+    maxMessagePerUser: number;
+    exceptionRoleIds: string[];
 };
 
 const defaultServerConfig: ServerConfigType = {
@@ -64,6 +66,8 @@ const defaultServerConfig: ServerConfigType = {
         },
     },
     openAIApiKey: null,
+    maxMessagePerUser: -1,
+    exceptionRoleIds: [],
 };
 
 const serverConfigState: Record<string, ServerConfigType | undefined> = {};
