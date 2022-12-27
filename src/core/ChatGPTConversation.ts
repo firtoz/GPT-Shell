@@ -28,7 +28,6 @@ import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 
-
 // Binary search algorithm
 function binarySearchIndex(numbers: number[], targetNumber: number): number {
     let start = 0;
@@ -46,20 +45,6 @@ function binarySearchIndex(numbers: number[], targetNumber: number): number {
     }
     return -1;
 }
-
-// const PINECONE_API_KEY = getEnv('PINECONE_API_KEY');
-// const PINECONE_NAMESPACE = getEnv('PINECONE_NAMESPACE');
-// const PINECONE_BASE_URL = getEnv('PINECONE_BASE_URL');
-//
-// if (!PINECONE_API_KEY) {
-//     throw new Error('No PINECONE_API_KEY!');
-// }
-//
-// const pinecone = PINECONE_API_KEY && PINECONE_NAMESPACE && PINECONE_BASE_URL ? new PineconeClient<Metadata>({
-//     apiKey: PINECONE_API_KEY,
-//     baseUrl: PINECONE_BASE_URL,
-//     namespace: PINECONE_NAMESPACE,
-// }) : null;
 
 type HistoryConfig = {
     maxAllowed: number;
@@ -257,8 +242,6 @@ export class ChatGPTConversation extends BaseConversation {
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<string | null> {
 
-        // const config = await getConfig();
-
         const modelInfo = config.modelInfo[this.model];
 
         let finished = false;
@@ -275,19 +258,7 @@ export class ChatGPTConversation extends BaseConversation {
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                // const currentResponseTokens = encodeLength(latestResponseText);
-
-                // const messages = getLastMessagesUntilMaxTokens(this.messageHistory.map(id => this.messageHistoryMap[id]),
-                //     modelInfo.MAX_ALLOWED_TOKENS - (numInitialPromptTokens + currentResponseTokens)
-                // );
-
-//                 const prompt = `${initialPrompt}
-// ${messages.map(messageToPromptPart).join('\n')}
-// [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
-
                 const fullPrompt = await this.getFullPrompt(config, openai, user, message, latestResponseText, relevancyResultsCache);
-
-                // const newMessageItemEmbedding = newMessageItem.embedding;
 
                 response = await openai.createCompletion({
                     model: this.model,

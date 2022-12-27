@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {Collection, EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage} from "../utils/logMessage";
 
 // @ts-ignore
@@ -18,7 +18,7 @@ import {BaseConversation} from "./BaseConversation";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {ChatGPTConversation} from "./ChatGPTConversation";
-import {getConfig, getConfigForId, ServerConfigType} from "./config";
+import {getConfigForId, ServerConfigType} from "./config";
 
 
 export class ChatGPTConversationVersion0 extends BaseConversation {

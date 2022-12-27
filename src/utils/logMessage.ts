@@ -1,13 +1,7 @@
 import {discordClient} from "../discord/discordClient";
 import {db} from "../database/db";
 import {
-    CategoryChannel,
-    Channel,
-    DMChannel, ForumChannel,
-    NewsChannel,
-    PartialDMChannel,
-    PartialGroupDMChannel, PrivateThreadChannel, PublicThreadChannel,
-    StageChannel, TextBasedChannel, TextChannel, VoiceChannel
+    TextBasedChannel
 } from "discord.js";
 import {MultiMessage} from "../shared/MultiMessage";
 import {getEnv} from "./GetEnv";

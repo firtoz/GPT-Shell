@@ -2,10 +2,10 @@ import {db} from "../database/db";
 import {logMessage} from "../utils/logMessage";
 import {Collection, DiscordAPIError, Guild, GuildBasedChannel, Message, TextBasedChannel, User} from "discord.js";
 import {discordClient} from "../discord/discordClient";
-import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {conversationCache} from "./ConversationCache";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
+import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/messageReceivedInThread";
 
 const THREAD_PREFIX = `THREAD-`;
 

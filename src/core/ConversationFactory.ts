@@ -1,10 +1,10 @@
 import {retrieveConversation} from "./RetrieveConversation";
 import {discordClient} from "../discord/discordClient";
-import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/handleThread";
 import {ModelName} from "./ModelInfo";
 import {DMChannel, GuildTextBasedChannel, Message} from "discord.js";
 import {BaseConversation} from "./BaseConversation";
 import {ChatGPTConversation} from "./ChatGPTConversation";
+import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/messageReceivedInThread";
 
 export class ConversationFactory {
 

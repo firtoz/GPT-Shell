@@ -1,8 +1,6 @@
 import {AnyThreadChannel, Message} from "discord.js";
 import {retrieveConversation} from "../../../../core/RetrieveConversation";
-import {logMessage} from "../../../../utils/logMessage";
-
-export const messageReceivedInThread: Record<string, undefined | true> = {};
+import {messageReceivedInThread} from "./messageReceivedInThread";
 
 export async function handleThread(
     channelId: string,
