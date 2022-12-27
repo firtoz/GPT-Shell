@@ -299,56 +299,56 @@ export class ChatGPTConversation extends BaseConversation {
                 logMessage('Bad response', response.data);
                 finished = true;
                 break;
+            }
+
+            const choices = response.data.choices;
+            if (choices.length !== 1) {
+                logMessage('Not enough choices?!');
+                finished = true;
+
+                return null;
+            }
+
+            const choice = choices[0];
+
+            const text = choice.text;
+
+            if (text == undefined) {
+                logMessage('No text?!');
+                finished = true;
+
+                return null;
+            }
+
+            latestResponseText += text;
+
+            if (choice.finish_reason !== 'stop') {
+                if (onProgress) {
+                    onProgress(latestResponseText, false);
+                }
+
+                finished = false;
             } else {
-                const choices = response.data.choices;
-                if (choices.length !== 1) {
-                    logMessage('Not enough choices?!');
-                    finished = true;
+                finished = true;
 
-                    return null;
+                const newMessageItem = await this.createHumanMessage(openai, user, message);
+
+                this.messageHistoryMap[newMessageItem.id] = newMessageItem;
+                this.messageHistory.push(newMessageItem.id);
+
+                const responseMessage = await this.createResponseMessage(openai, this.username, user, latestResponseText);
+                this.messageHistory.push(responseMessage.id);
+                this.messageHistoryMap[responseMessage.id] = responseMessage;
+
+                logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
+
+                await this.persist();
+
+                if (onProgress) {
+                    onProgress(latestResponseText, true);
                 }
 
-                const choice = choices[0];
-
-                const text = choice.text;
-
-                latestResponseText += text;
-
-                if (text == undefined) {
-                    logMessage('No text?!');
-                    finished = true;
-
-                    return null;
-                }
-
-                if (choice.finish_reason === 'stop') {
-                    finished = true;
-
-                    const newMessageItem = await this.createHumanMessage(openai, user, message);
-
-                    this.messageHistoryMap[newMessageItem.id] = newMessageItem;
-                    this.messageHistory.push(newMessageItem.id);
-
-                    const responseMessage = await this.createResponseMessage(openai, this.username, user, latestResponseText);
-                    this.messageHistory.push(responseMessage.id);
-                    this.messageHistoryMap[responseMessage.id] = responseMessage;
-
-                    logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
-
-                    await this.persist();
-
-                    if (onProgress) {
-                        onProgress(latestResponseText, true);
-                    }
-
-                    return latestResponseText;
-                } else {
-                    if (onProgress) {
-                        onProgress(latestResponseText, false);
-                    }
-
-                    finished = false;
-                }
+                return latestResponseText;
             }
         }
 
@@ -767,7 +767,7 @@ ${messageToPromptPart(item.message)}`;
 
             return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
 ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\n')}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}`;
+[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
         }
 
         const tokensForRecentMessages = Math.min(config.maxTokensForRecentMessages, availableTokens);

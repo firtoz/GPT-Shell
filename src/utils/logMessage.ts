@@ -43,7 +43,7 @@ function stringify(obj: any) {
             return `<ERROR ${value.name}> (cause: "${value.cause}"): message:"${value.message}": ${value.stack}`;
         }
 
-        if(value instanceof RegExp) {
+        if (value instanceof RegExp) {
             return `<REGEX: ${value.source}>`
         }
 
@@ -70,7 +70,7 @@ export function printArg(arg: any): string {
             return `<FUNCTION>`;
         case "object":
             return `\`\`\`json
-${stringify(arg)}
+${stringify(arg).replace(/```/g, '\\`\\`\\`')}
 \`\`\``;
         case "undefined":
         case "boolean":
