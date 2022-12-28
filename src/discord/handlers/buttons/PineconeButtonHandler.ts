@@ -1,6 +1,6 @@
 import {TextInputStyle} from "discord.js";
-import {PineconeModal} from "./PineconeModal";
-import {ButtonCommand} from "../ButtonCommand";
+import {PineconeModal} from "../modals/PineconeModal";
+import {ButtonCommand} from "../../ButtonCommand";
 
 const pineconeButtonId = 'SET-PINECONE-BUTTON';
 export const PineconeButtonHandler: ButtonCommand = {

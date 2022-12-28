@@ -8,7 +8,8 @@ import {
 } from "discord.js";
 import {Commands} from "../Commands";
 import {logMessage} from "../../utils/logMessage";
-import {ButtonCommands, ModalSubmitHandlers} from "../ButtonCommands";
+import {ButtonCommands} from "../ButtonCommands";
+import {ModalSubmitHandlers} from "../ModalSubmitHandlers";
 
 async function handleModalSubmit(client: Client, interaction: ModalSubmitInteraction) {
     const modalSubmit = ModalSubmitHandlers.find(c => c.id === interaction.customId);

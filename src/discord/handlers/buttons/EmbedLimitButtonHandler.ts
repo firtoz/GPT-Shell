@@ -1,5 +1,5 @@
-import {ButtonCommand} from "../ButtonCommand";
-import {EmbedLimitModal} from "./EmbedLimitModal";
+import {ButtonCommand} from "../../ButtonCommand";
+import {EmbedLimitModal} from "../modals/EmbedLimitModal";
 
 const embedLimitId = 'SET-EMBED-LIMIT';
 export const EmbedLimitButtonHandler: ButtonCommand = {

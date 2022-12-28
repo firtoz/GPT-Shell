@@ -1,5 +1,5 @@
-import {getEnv} from "../../utils/GetEnv";
-import {Command} from "../Command";
+import {getEnv} from "../../../utils/GetEnv";
+import {Command} from "../../Command";
 import {
     ActionRowBuilder,
     ApplicationCommandOptionData,
@@ -12,14 +12,15 @@ import {
     ComponentType, EmbedBuilder, Snowflake,
     TextInputStyle
 } from "discord.js";
-import {getConfig, getConfigForId} from "../../core/config";
-import {logMessage, printArg} from "../../utils/logMessage";
-import {PineconeButtonHandler} from "./PineconeButtonHandler";
-import {EmbedLimitButtonHandler} from "./EmbedLimitButtonHandler";
-import {OpenAIAPIKeyButtonHandler, TokenLimitsButtonHandler} from "./TokenLimitsButtonHandler";
-import {retrieveConversation} from "../../core/RetrieveConversation";
-import {discordClient, getGuildName} from "../discordClient";
-import {mainServerId} from "../../core/MainServerId";
+import {getConfig, getConfigForId} from "../../../core/config";
+import {logMessage, printArg} from "../../../utils/logMessage";
+import {PineconeButtonHandler} from "../buttons/PineconeButtonHandler";
+import {EmbedLimitButtonHandler} from "../buttons/EmbedLimitButtonHandler";
+import {TokenLimitsButtonHandler} from "../buttons/TokenLimitsButtonHandler";
+import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {discordClient, getGuildName} from "../../discordClient";
+import {mainServerId} from "../../../core/MainServerId";
+import {OpenAIAPIKeyButtonHandler} from "../buttons/OpenAIAPIKeyButtonHandler";
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 const USE_SAME_API_KEY_FOR_ALL = getEnv('USE_SAME_API_KEY_FOR_ALL');
@@ -141,6 +142,16 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                     }
                 ];
 
+                const components = [
+                    new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(TokenLimitsButtonHandler.id)
+                                .setLabel('Change Token Limits')
+                                .setStyle(ButtonStyle.Primary),
+                        ),
+                ];
+
                 if (!isDM) {
                     fields.push(
                         {
@@ -151,19 +162,17 @@ If you set a positive number for this value, the bot will respond only up to thi
 
 Users with the exception roles can send unlimited number of messages.
 
-Exception role: ${config.exceptionRoleIds.length > 0 ? config.exceptionRoleIds.map(id => `<@${id}>`) : 'undefined!'}`,
+Exception roles: ${config.exceptionRoleIds.length > 0 ? config.exceptionRoleIds.map(id => `<@${id}>`) : 'undefined!'}`,
                         });
-                }
 
-                const components = [
-                    new ActionRowBuilder<ButtonBuilder>()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId(TokenLimitsButtonHandler.id)
-                                .setLabel('Change Token Limits')
-                                .setStyle(ButtonStyle.Primary),
-                        ),
-                ];
+
+                    components[0] = components[0].addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(OpenAIAPIKeyButtonHandler.id)
+                            .setLabel('Change OpenAI API Key')
+                            .setStyle(ButtonStyle.Primary)
+                    );
+                }
 
                 if (USE_SAME_API_KEY_FOR_ALL !== 'true' || configId === mainServerId) {
                     fields.push(

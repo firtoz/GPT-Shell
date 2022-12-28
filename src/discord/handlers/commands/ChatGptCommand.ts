@@ -8,17 +8,17 @@ import {
     EmbedType, Message,
     ThreadAutoArchiveDuration
 } from "discord.js";
-import {Command} from "../Command";
-import {getEnv} from "../../utils/GetEnv";
-import {logMessage} from "../../utils/logMessage";
-import {discordClient, getGuildName} from "../discordClient";
-import {getMissingAPIKeyResponse} from "../../utils/GetMissingAPIKeyResponse";
-import {getDateString} from "../../utils/GetDateString";
-import {ModelName} from "../../core/ModelInfo";
-import {getOpenAIForId} from "../../core/GetOpenAIForId";
-import {trySendingMessage} from "../../core/TrySendingMessage";
-import {BaseConversation} from "../../core/BaseConversation";
-import {ConversationFactory} from "../../core/ConversationFactory";
+import {Command} from "../../Command";
+import {getEnv} from "../../../utils/GetEnv";
+import {logMessage} from "../../../utils/logMessage";
+import {discordClient, getGuildName} from "../../discordClient";
+import {getMissingAPIKeyResponse} from "../../../utils/GetMissingAPIKeyResponse";
+import {getDateString} from "../../../utils/GetDateString";
+import {ModelName} from "../../../core/ModelInfo";
+import {getOpenAIForId} from "../../../core/GetOpenAIForId";
+import {trySendingMessage} from "../../../core/TrySendingMessage";
+import {BaseConversation} from "../../../core/BaseConversation";
+import {ConversationFactory} from "../../../core/ConversationFactory";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 

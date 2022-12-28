@@ -1,6 +1,6 @@
 import {defineModal} from "./DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, setConfig} from "../../core/config";
+import {getConfig, setConfig} from "../../../core/config";
 import {parseInt} from "lodash";
 
 export const EmbedLimitModal = defineModal(

@@ -1,9 +1,9 @@
 import {defineModal} from "./DefineModal";
 import {EmbedBuilder, ModalSubmitInteraction, TextInputStyle} from "discord.js";
-import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../core/config";
+import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../core/config";
 import {parseInt} from "lodash";
-import {retrieveConversation} from "../../core/RetrieveConversation";
-import {getConfigIdForInteraction} from "./ConfigCommand";
+import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {getConfigIdForInteraction} from "../commands/ConfigCommand";
 
 export const TokenLimitsModal = defineModal(
     'TOKEN-LIMIT-MODAL',

@@ -1,13 +1,13 @@
 import {defineModal} from "./DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../core/config";
+import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../core/config";
 import {Configuration, OpenAIApi} from "openai";
-import {OpenAICache} from "../../core/GetOpenAIForId";
-import {mainServerId} from "../../core/MainServerId";
+import {OpenAICache} from "../../../core/GetOpenAIForId";
+import {mainServerId} from "../../../core/MainServerId";
 import {AxiosError} from "axios";
-import {logMessage} from "../../utils/logMessage";
-import {getConfigIdForInteraction} from "./ConfigCommand";
-import {getGuildName} from "../discordClient";
+import {logMessage} from "../../../utils/logMessage";
+import {getConfigIdForInteraction} from "../commands/ConfigCommand";
+import {getGuildName} from "../../discordClient";
 
 export const OpenAIAPIKeyModal = defineModal(
     'OPENAI-API-KEY-MODAL',

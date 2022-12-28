@@ -1,12 +1,8 @@
-import {PineconeButtonHandler} from "./commands/PineconeButtonHandler";
-import {PineconeModal} from "./commands/PineconeModal";
-import {ModalConfig} from "./ModalConfig";
+import {PineconeButtonHandler} from "./handlers/buttons/PineconeButtonHandler";
 import {ButtonCommand} from "./ButtonCommand";
-import {EmbedLimitButtonHandler} from "./commands/EmbedLimitButtonHandler";
-import {EmbedLimitModal} from "./commands/EmbedLimitModal";
-import {TokenLimitsModal} from "./commands/TokenLimitsModal";
-import {OpenAIAPIKeyButtonHandler, TokenLimitsButtonHandler} from "./commands/TokenLimitsButtonHandler";
-import {OpenAIAPIKeyModal} from "./commands/OpenAIAPIKeyModal";
+import {EmbedLimitButtonHandler} from "./handlers/buttons/EmbedLimitButtonHandler";
+import {TokenLimitsButtonHandler} from "./handlers/buttons/TokenLimitsButtonHandler";
+import {OpenAIAPIKeyButtonHandler} from "./handlers/buttons/OpenAIAPIKeyButtonHandler";
 
 export const ButtonCommands: ButtonCommand[] = [
     PineconeButtonHandler,
@@ -15,9 +11,3 @@ export const ButtonCommands: ButtonCommand[] = [
     OpenAIAPIKeyButtonHandler,
 ];
 
-export const ModalSubmitHandlers: ModalConfig[] = [
-    PineconeModal,
-    EmbedLimitModal,
-    TokenLimitsModal,
-    OpenAIAPIKeyModal,
-];

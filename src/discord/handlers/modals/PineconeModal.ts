@@ -1,7 +1,7 @@
-import {getConfig} from "../../core/config";
+import {getConfig} from "../../../core/config";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
 import {defineModal} from "./DefineModal";
-import {trySavingPineconeOptions} from "../../core/pinecone";
+import {trySavingPineconeOptions} from "../../../core/pinecone";
 
 const pineconModalId = 'SET-PINECONE-MODAL';
 

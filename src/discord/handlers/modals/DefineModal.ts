@@ -7,8 +7,8 @@ import {
     TextInputStyle
 } from "discord.js";
 import {Narrow} from "ts-toolbelt/out/Function/Narrow";
-import {ModalConfig} from "../ModalConfig";
-import {logMessage} from "../../utils/logMessage";
+import {ModalConfig} from "../../ModalConfig";
+import {logMessage} from "../../../utils/logMessage";
 
 type ModalInput = {
     name: string;
