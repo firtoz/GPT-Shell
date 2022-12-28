@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {EmbedType, Message, Role, TextBasedChannel, User} from "discord.js";
+import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {CreateCompletionResponse, CreateEmbeddingResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
@@ -26,27 +26,6 @@ import {getConfig, getConfigForId, getMessageCounter, saveMessageCounter, Server
 import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
-
-const roleCache: Record<string, Record<string, Role | null>> = {};
-
-const getRole = async (guildId: string, roleId: string) => {
-    if (!roleCache[guildId]) {
-        roleCache[guildId] = {};
-    }
-
-    if (roleCache[guildId][roleId] === undefined) {
-        try {
-            const guild = await discordClient.guilds.fetch(guildId);
-
-            roleCache[guildId][roleId] = await guild.roles.fetch(roleId);
-        } catch (e) {
-            roleCache[guildId][roleId] = null;
-        }
-    }
-
-    return roleCache[guildId][roleId];
-}
-
 
 // Binary search algorithm
 function binarySearchIndex(numbers: number[], targetNumber: number): number {
@@ -253,8 +232,6 @@ export class ChatGPTConversation extends BaseConversation {
         message: string,
         onProgress: (result: string, finished: boolean) => void,
     ): Promise<void> {
-        const start = performance.now();
-
         const modelInfo = config.modelInfo[this.model];
 
         let finished = false;
@@ -273,11 +250,7 @@ export class ChatGPTConversation extends BaseConversation {
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to start getting full prompt.`);
-
                 const fullPrompt = await this.getFullPrompt(config, openai, user, inputMessageItem, latestResponseText, relevancyResultsCache);
-
-                logMessage(`Took ${(performance.now() - start).toFixed(2)} to start sending completion.`);
 
                 response = await openai.createCompletion({
                     model: this.model,
@@ -289,8 +262,6 @@ export class ChatGPTConversation extends BaseConversation {
                     presence_penalty: 0,
                     user: user.id,
                 }) as any;
-
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to receive current completion.`);
 
             } catch (e: any) {
                 if (e.isAxiosError) {
@@ -351,15 +322,13 @@ export class ChatGPTConversation extends BaseConversation {
 
                 finished = false;
             } else {
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms get to finished.`);
-
                 if (onProgress) {
                     onProgress(latestResponseText, true);
                 }
 
                 finished = true;
 
-                const embeddingpromise = this.tryCreateEmbeddingForMessage(
+                const embeddingPromise = this.tryCreateEmbeddingForMessage(
                     openai,
                     user,
                     inputMessageItem.content,
@@ -369,18 +338,14 @@ export class ChatGPTConversation extends BaseConversation {
 
                 const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, latestResponseText);
 
-                inputMessageItem.embedding = await embeddingpromise;
+                inputMessageItem.embedding = await embeddingPromise;
                 const responseMessage = await createResponseMessagePromise;
-
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to finish creating embedding for input message.`);
 
                 this.messageHistoryMap[inputMessageItem.id] = inputMessageItem;
                 this.messageHistory.push(inputMessageItem.id);
 
                 this.messageHistory.push(responseMessage.id);
                 this.messageHistoryMap[responseMessage.id] = responseMessage;
-
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to finish creating response message with embedding.`);
 
                 logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
 
@@ -393,7 +358,6 @@ export class ChatGPTConversation extends BaseConversation {
                 }
 
                 await this.persist();
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to return with latest response text.`);
 
                 return;
             }
@@ -408,8 +372,6 @@ export class ChatGPTConversation extends BaseConversation {
         inputValue: string,
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
-        const start = performance.now();
-
         let openai: OpenAIApi | undefined;
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
@@ -418,26 +380,22 @@ export class ChatGPTConversation extends BaseConversation {
         const serverConfig = await getConfigForId(configId);
 
         if (!this.isDirectMessage && serverConfig.maxMessagePerUser != -1) {
-            try {
-                const messageCounter = await getMessageCounter(configId);
-                const messageCountForUser = messageCounter[user.id] ?? 0;
-                if (messageCountForUser > serverConfig.maxMessagePerUser) {
-                    const guild = await discordClient.guilds.fetch(this.guildId);
-                    const member = await guild.members.fetch(user.id);
+            const messageCounter = await getMessageCounter(configId);
+            const messageCountForUser = messageCounter[user.id] ?? 0;
+            if (messageCountForUser > serverConfig.maxMessagePerUser) {
+                const guild = await discordClient.guilds.fetch(this.guildId);
+                const member = await guild.members.fetch(user.id);
 
-                    if (!serverConfig
-                        .exceptionRoleIds
-                        .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
+                if (!serverConfig
+                    .exceptionRoleIds
+                    .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
 
-                        await trySendingMessage(channel, {
-                            content: `Reached max limit of messages for ${user.username}.\n\nPlease contact a server admin to get access for unlimited messages.`
-                        }, messageToReplyTo);
+                    await trySendingMessage(channel, {
+                        content: `Reached max limit of messages for ${user.username}.\n\nPlease contact a server admin to get access for unlimited messages.`
+                    }, messageToReplyTo);
 
-                        return;
-                    }
+                    return;
                 }
-            } finally {
-                logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to get message count info.`);
             }
         }
 
@@ -451,8 +409,6 @@ export class ChatGPTConversation extends BaseConversation {
                 openai = await getOpenAIForId(user.id);
             }
         }
-
-        logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to get to openai for id.`);
 
         if (!openai) {
             logMessage(`No api key for [${(await this.getDebugName(user))}].`);
@@ -601,8 +557,6 @@ ${fullPrompt}
             this.lastDiscordMessageId = messageToReplyTo.id;
         }
 
-        logMessage(`Took ${(performance.now() - start).toFixed(2)}ms start sending the prompt to chat.`);
-
         let promiseComplete = false;
 
         const sendPromise = this.SendPromptToGPTChat(
@@ -642,8 +596,6 @@ ${fullPrompt}
         }, 5000);
 
         await sendPromise;
-
-        logMessage(`Took ${(performance.now() - start).toFixed(2)}ms to finish sending response.`);
 
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
@@ -852,15 +804,11 @@ ${messageToPromptPart(item.message)}`;
         relevancyCheckCache: RelevancyCheckCache,
         debug: boolean = false,
     ) {
-        const start = performance.now();
-
         const initialPrompt = getOriginalPrompt(this.username);
         const modelInfo = config.modelInfo[this.model];
 
         const numInitialPromptTokens = encodeLength(initialPrompt);
         const currentResponseTokens = encodeLength(latestResponseText);
-
-        logMessage(`Took ${(performance.now() - start).toFixed(2)} to get to a human message.`);
 
         const inputTokens = encodeLength(messageToPromptPart(inputMessageItem));
 
@@ -871,8 +819,6 @@ ${messageToPromptPart(item.message)}`;
 
         if (totalTokensFromHistory < availableTokens) {
             // use only messages, it's simpler
-
-            logMessage(`Took ${(performance.now() - start).toFixed(2)} to get to quick return.`);
 
             return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
 ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\n')}
@@ -887,8 +833,6 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
             true,
         );
 
-        logMessage(`Took ${(performance.now() - start).toFixed(2)} to get to latest messages.`);
-
         if (!relevancyCheckCache.searchPerformed) {
             // check relevancy using last 4 messages.
             const last4 = allMessagesInHistory.slice(-4);
@@ -901,8 +845,6 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
             let embeddings: AxiosResponse<CreateEmbeddingResponse>;
             let vector: Array<number> | null = null;
 
-            logMessage(`Took ${(performance.now() - start).toFixed(2)} to start creating embeddings.`);
-
             try {
                 embeddings = await openai.createEmbedding({
                     user: user.id,
@@ -914,8 +856,6 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
             } catch (e) {
                 logMessage(`${await this.getLinkableId()}: Cannot create embeddings`, e);
             }
-
-            logMessage(`Took ${(performance.now() - start).toFixed(2)} to start checking for relevant messages.`);
 
             const relevantMessages = await this.getRelevantMessages(user, openai, 0.05, vector);
 
@@ -968,8 +908,6 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
         }
 
         const latestMessagesAndCurrentPrompt = latestMessagesPlusNewMessage.map(messageToPromptPart).join('\n');
-
-        logMessage(`Took ${(performance.now() - start).toFixed(2)} to start returning full prompt`);
 
         return `${initialPrompt}
 ${includedRelevantMessages.length > 0 ? `${relevantPrefix}
