@@ -15,7 +15,7 @@ import {
     EmbedBuilder,
     TextInputStyle
 } from "discord.js";
-import {getConfig, getConfigForId} from "../../../core/config";
+import {getConfig, getConfigForId, getMessageCounter} from "../../../core/config";
 import {logMessage} from "../../../utils/logMessage";
 import {discordClient, getGuildName} from "../../discordClient";
 import {mainServerId} from "../../../core/MainServerId";
@@ -109,14 +109,32 @@ As new messages are sent, they will be stored in long term memory one by one, so
         }
 
         if (commandInteraction.channelId) {
-
             if (!isDM) {
                 if (!commandInteraction.memberPermissions?.has('Administrator')) {
-                    await commandInteraction.followUp({
-                        content: 'Only administrator accounts can use this command in a server.' +
-                            'If you want to set the config for your user, please do it in a DM to me.',
-                        ephemeral: true,
-                    });
+                    if (configId != null) {
+                        const config = await getConfigForId(configId);
+
+                        const messageCounter = await getMessageCounter(configId);
+
+                        logMessage(`Showing config for [${isDM ? `User:${commandInteraction.user.tag}` :
+                            `Server:${await getGuildName(configId)}, by User:${commandInteraction.user.tag}`}]`);
+
+                        const fields = [{
+                            name: 'Sent Messages',
+                            value: `You sent ${messageCounter[commandInteraction.user.id] ?? 0}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser}.`
+                        }];
+
+                        await commandInteraction.followUp({
+                            ephemeral: true,
+                            embeds: [
+                                new EmbedBuilder()
+                                    .setTitle(`${isDM ? `USER [${commandInteraction.user.tag}]` : `SERVER [${await getGuildName(configId)}]`} Config`)
+                                    .setFields(fields)
+                            ],
+                        });
+
+                    }
+
                     return;
                 }
             }
@@ -160,6 +178,8 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                     );
                 }
 
+                const messageCounter = await getMessageCounter(configId);
+
                 if (!isDM) {
                     fields.push(
                         {
@@ -167,6 +187,19 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                             value: getMessageLimitsMessage(config),
                         });
 
+                    const totalSum = Object
+                        .values(messageCounter)
+                        .reduce(
+                            (sum, item) => sum! + (item == undefined ? 0 : item),
+                            0,
+                        );
+
+                    fields.push({
+                        name: 'Sent Messages',
+                        value: `You sent ${messageCounter[commandInteraction.user.id] ?? 0}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser}.
+
+Total: ${totalSum}.`
+                    });
 
                     components[0] = components[0]
                         .addComponents(

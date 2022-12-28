@@ -90,7 +90,9 @@ async function clearMessageQueue(logChannel: TextBasedChannel) {
     while (messageQueue.length > 0) {
         const nextMessages = messageQueue.splice(0, messageQueue.length);
 
-        await new MultiMessage(logChannel).update(nextMessages.join('\n'), true);
+        const multiMessage = new MultiMessage(logChannel);
+        multiMessage.isLogMessage = true;
+        await multiMessage.update(nextMessages.join('\n'), true);
     }
 
     messagePromise = null;

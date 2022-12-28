@@ -1,7 +1,6 @@
 import {conversationCache} from "./ConversationCache";
 import {db} from "../database/db";
 import {ChatGPTConversation} from "./ChatGPTConversation";
-import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 import {BaseConversation} from "./BaseConversation";
 
 export const retrieveConversation = async (threadId: string): Promise<BaseConversation | null> => {
@@ -20,10 +19,7 @@ export const retrieveConversation = async (threadId: string): Promise<BaseConver
         if ((fromDb as ChatGPTConversation).version !== undefined) {
             result = await ChatGPTConversation.handleRetrievalFromDB(fromDb as ChatGPTConversation);
         } else {
-            result = await ChatGPTConversation.upgrade(fromDb as ChatGPTConversationVersion0);
-            if (result == null) {
-                result = await ChatGPTConversationVersion0.handleRetrievalFromDB(fromDb as any);
-            }
+            result = null;
         }
     }
 

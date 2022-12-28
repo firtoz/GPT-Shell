@@ -72,6 +72,25 @@ const defaultServerConfig: ServerConfigType = {
 
 const serverConfigState: Record<string, ServerConfigType | undefined> = {};
 
+type MessageCounter = Record<string, number | undefined>;
+
+const messageCounterCache: Record<string, MessageCounter | undefined> = {};
+
+export const getMessageCounter = async (id: string): Promise<MessageCounter> => {
+    if(messageCounterCache[id] === undefined) {
+        const counter = await db.get<MessageCounter>(`MESSAGE-COUNTER-${id}`);
+        messageCounterCache[id] = counter ?? {};
+    }
+
+    return messageCounterCache[id]!;
+}
+
+export const saveMessageCounter = async (id: string, counter: MessageCounter) => {
+    messageCounterCache[id] = counter;
+
+    await db.set(`MESSAGE-COUNTER-${id}`, counter);
+}
+
 const getConfigForIdInternal = async (id: string) => {
     const defaultClone = _.cloneDeep(defaultServerConfig);
 
