@@ -1,4 +1,4 @@
-import {defineModal} from "./DefineModal";
+import {defineModal} from "../DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
 import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../core/config";
 import {Configuration, OpenAIApi} from "openai";
@@ -12,6 +12,10 @@ import {getGuildName} from "../../discordClient";
 export const OpenAIAPIKeyModal = defineModal(
     'OPENAI-API-KEY-MODAL',
     'OpenAI API Key',
+    {
+      textOnClick: 'Updating OpenAI API Key...',
+      label: 'Change OpenAI API Key',
+    },
     [{
         name: 'apiKey',
         label: 'API Key',

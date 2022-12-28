@@ -4,28 +4,29 @@ import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../cor
 import {parseInt} from "lodash";
 import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {getConfigIdForInteraction} from "../commands/ConfigCommand";
+import {getMessageLimitsMessage} from "../commands/GetMessageLimitsMessage";
 
-export const TokenLimitsModal = defineModal(
-    'TOKEN-LIMIT-MODAL',
-    'Token Limits',
+export const MessageLimitsModal = defineModal(
+    'MESSAGE-LIMIT-MODAL',
+    'Message Limits',
     {
-        label: 'Change Token Limits',
-        textOnClick: 'Updating Token Limits...',
+        label: 'Change Message Limits',
+        textOnClick: 'Updating Message Limits...',
     },
     [{
-        name: 'maxTokensForRecentMessages',
+        name: 'maxMessagePerUser',
         label: 'Tokens for Recent Messages',
         defaultValue: '',
         placeholder: '',
-        required: false,
+        required: true,
         style: TextInputStyle.Short,
     }, {
-        name: 'maxAllowedTokens',
-        label: 'Max Total Tokens Per Msg',
+        name: 'exceptionRoleIds',
+        label: 'Exception Role Ids',
         defaultValue: '',
-        placeholder: '',
+        placeholder: '[ID1]\n[ID2]',
         required: false,
-        style: TextInputStyle.Short,
+        style: TextInputStyle.Paragraph,
     }], async (interaction) => {
         const {configId} = await getConfigIdForInteraction(interaction);
         if (!configId) {
@@ -35,13 +36,12 @@ export const TokenLimitsModal = defineModal(
         const config = await getConfigForId(configId);
 
         return {
-            maxTokensForRecentMessages: `${config.maxTokensForRecentMessages || 0}`,
-            maxAllowedTokens: `${config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS || 0}`,
+            maxMessagePerUser: `${config.maxMessagePerUser}`,
+            exceptionRoleIds: `${config.exceptionRoleIds.join('\n')}`
         };
     },
     async (values, submitInteraction) => {
         try {
-
             const {configId} = await getConfigIdForInteraction(submitInteraction);
             if (!configId) {
                 throw new Error('No config id found for interaction...');
@@ -49,14 +49,13 @@ export const TokenLimitsModal = defineModal(
 
             const config = await getConfigForId(configId);
 
-            const {maxTokensForRecentMessages, maxAllowedTokens} = values;
+            const {maxMessagePerUser, exceptionRoleIds} = values;
 
-            const maxTokensForRecentMessagesValue = parseInt(maxTokensForRecentMessages ?? '0');
-            const maxAllowedTokensValue = parseInt(maxAllowedTokens ?? '0');
+            const maxMessagePerUserValue = parseInt(maxMessagePerUser ?? '-1');
 
-            if (!isNaN(maxTokensForRecentMessagesValue) && !isNaN(maxAllowedTokensValue)) {
-                config.maxTokensForRecentMessages = maxTokensForRecentMessagesValue;
-                config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS = maxAllowedTokensValue;
+            if (!isNaN(maxMessagePerUserValue)) {
+                config.maxMessagePerUser = maxMessagePerUserValue < 0 ? -1 : maxMessagePerUserValue;
+                config.exceptionRoleIds = (exceptionRoleIds ?? '').split('\n').map(item => item.trim());
 
                 await setConfigForId(configId, config);
 
@@ -64,13 +63,13 @@ export const TokenLimitsModal = defineModal(
                     content: '',
                     embeds: [
                         new EmbedBuilder()
-                            .setDescription(`Updated token limits to [${maxTokensForRecentMessagesValue}, ${maxAllowedTokensValue}]!`)
+                            .setDescription(`Updated.\n${getMessageLimitsMessage(config)}`)
                             .setColor(0x00ff00)
                     ],
                     components: [],
                 });
             } else {
-                throw new Error('Invalid values provided, use only integers please.');
+                throw new Error('Invalid values provided.');
             }
         } catch (e: any) {
             await submitInteraction.followUp({

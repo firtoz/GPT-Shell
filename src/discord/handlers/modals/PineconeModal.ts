@@ -1,6 +1,6 @@
 import {getConfig} from "../../../core/config";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {defineModal} from "./DefineModal";
+import {defineModal} from "../DefineModal";
 import {trySavingPineconeOptions} from "../../../core/pinecone";
 
 const pineconModalId = 'SET-PINECONE-MODAL';
@@ -8,6 +8,10 @@ const pineconModalId = 'SET-PINECONE-MODAL';
 export const PineconeModal = defineModal(
     pineconModalId,
     'Pinecone Options',
+    {
+        label: 'Update Pinecone Options',
+        textOnClick: 'Updating Pinecone Options...',
+    },
     [{
         name: 'apiKey',
         label: 'API Key',

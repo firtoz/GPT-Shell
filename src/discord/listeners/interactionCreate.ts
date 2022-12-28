@@ -48,6 +48,17 @@ export default (client: Client): void => {
 };
 
 const handleButtonCommand = async (client: Client, interaction: ButtonInteraction): Promise<void> => {
+    const modalButtonCommand = ModalSubmitHandlers.find(c => c.buttonId === interaction.customId);
+    if (modalButtonCommand) {
+        try {
+            await modalButtonCommand.onButtonClick(interaction);
+        } catch (e) {
+            logMessage(`Cannot run button command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
+        }
+
+        return;
+    }
+
     const buttonCommand = ButtonCommands.find(c => c.id === interaction.customId);
     if (!buttonCommand) {
         await interaction.followUp({content: 'An error has occurred'});

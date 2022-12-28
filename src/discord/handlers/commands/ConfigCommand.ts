@@ -4,23 +4,27 @@ import {
     ActionRowBuilder,
     ApplicationCommandOptionData,
     ApplicationCommandOptionType,
-    ApplicationCommandType, BaseInteraction,
+    ApplicationCommandType,
+    BaseInteraction,
     ButtonBuilder,
-    ButtonStyle, ChannelType,
+    ButtonStyle,
+    ChannelType,
     Client,
     CommandInteraction,
-    ComponentType, EmbedBuilder, Snowflake,
+    ComponentType,
+    EmbedBuilder,
     TextInputStyle
 } from "discord.js";
 import {getConfig, getConfigForId} from "../../../core/config";
-import {logMessage, printArg} from "../../../utils/logMessage";
-import {PineconeButtonHandler} from "../buttons/PineconeButtonHandler";
-import {EmbedLimitButtonHandler} from "../buttons/EmbedLimitButtonHandler";
-import {TokenLimitsButtonHandler} from "../buttons/TokenLimitsButtonHandler";
-import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {logMessage} from "../../../utils/logMessage";
 import {discordClient, getGuildName} from "../../discordClient";
 import {mainServerId} from "../../../core/MainServerId";
-import {OpenAIAPIKeyButtonHandler} from "../buttons/OpenAIAPIKeyButtonHandler";
+import {OpenAIAPIKeyModal} from "../modals/OpenAIAPIKeyModal";
+import {PineconeModal} from "../modals/PineconeModal";
+import {EmbedLimitModal} from "../modals/EmbedLimitModal";
+import {TokenLimitsModal} from "../modals/TokenLimitsModal";
+import {getMessageLimitsMessage} from "./GetMessageLimitsMessage";
+import {MessageLimitsModal} from "../modals/MessageLimitsModal";
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 const USE_SAME_API_KEY_FOR_ALL = getEnv('USE_SAME_API_KEY_FOR_ALL');
@@ -97,14 +101,8 @@ As new messages are sent, they will be stored in long term memory one by one, so
                 components: [
                     new ActionRowBuilder<ButtonBuilder>()
                         .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId(PineconeButtonHandler.id)
-                                .setLabel('Update Pinecone Config')
-                                .setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder()
-                                .setCustomId(EmbedLimitButtonHandler.id)
-                                .setLabel('Change Embed Limit')
-                                .setStyle(ButtonStyle.Primary),
+                            PineconeModal.getButtonComponent(),
+                            EmbedLimitModal.getButtonComponent(),
                         ),
                 ]
             });
@@ -145,34 +143,9 @@ If max tokens for recent messages are less than max tokens for prompt, then the 
                 const components = [
                     new ActionRowBuilder<ButtonBuilder>()
                         .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId(TokenLimitsButtonHandler.id)
-                                .setLabel('Change Token Limits')
-                                .setStyle(ButtonStyle.Primary),
+                            TokenLimitsModal.getButtonComponent(),
                         ),
                 ];
-
-                if (!isDM) {
-                    fields.push(
-                        {
-                            name: 'Message Limits',
-                            value: `Maximum messages per user: ${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser}.
-                
-If you set a positive number for this value, the bot will respond only up to this number of messages from users.
-
-Users with the exception roles can send unlimited number of messages.
-
-Exception roles: ${config.exceptionRoleIds.length > 0 ? config.exceptionRoleIds.map(id => `<@${id}>`) : 'undefined!'}`,
-                        });
-
-
-                    components[0] = components[0].addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(OpenAIAPIKeyButtonHandler.id)
-                            .setLabel('Change OpenAI API Key')
-                            .setStyle(ButtonStyle.Primary)
-                    );
-                }
 
                 if (USE_SAME_API_KEY_FOR_ALL !== 'true' || configId === mainServerId) {
                     fields.push(
@@ -183,11 +156,22 @@ Exception roles: ${config.exceptionRoleIds.length > 0 ? config.exceptionRoleIds.
                     );
 
                     components[0] = components[0].addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(OpenAIAPIKeyButtonHandler.id)
-                            .setLabel('Change OpenAI API Key')
-                            .setStyle(ButtonStyle.Primary)
+                        OpenAIAPIKeyModal.getButtonComponent(),
                     );
+                }
+
+                if (!isDM) {
+                    fields.push(
+                        {
+                            name: 'Message Limits',
+                            value: getMessageLimitsMessage(config),
+                        });
+
+
+                    components[0] = components[0]
+                        .addComponents(
+                            MessageLimitsModal.getButtonComponent(),
+                        );
                 }
 
                 await commandInteraction.followUp({
