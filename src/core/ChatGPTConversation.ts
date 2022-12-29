@@ -226,6 +226,7 @@ export class ChatGPTConversation extends BaseConversation {
 
     private async SendPromptToGPTChat(
         config: ConfigForIdType,
+        usingOpenAIForServer: boolean,
         openai: OpenAIApi,
         user: User,
         message: string,
@@ -281,7 +282,11 @@ export class ChatGPTConversation extends BaseConversation {
                 const data = response.data as unknown as CompletionError;
 
                 if (data.error?.type === 'insufficient_quota') {
-                    onProgress('[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.]]', true);
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
+                    onProgress(`[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.${usingOpenAIForServer ? `
+
+You can alternatively supply your own API key to me by sending me the /${CONFIG_COMMAND_NAME} command in a DM.` : ''}]]`, true);
                 } else if (data.error?.message) {
                     onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
                 } else {
@@ -562,6 +567,7 @@ ${fullPrompt}
 
         const sendPromise = this.SendPromptToGPTChat(
             currentConfig,
+            usingOpenAIForServer,
             openai,
             user,
             inputValue,
