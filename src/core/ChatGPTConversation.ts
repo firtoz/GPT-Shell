@@ -401,9 +401,9 @@ export class ChatGPTConversation extends BaseConversation {
                     await trySendingMessage(channel, {
                         content: `Reached max limit of messages for ${user.username}.
                         
-Please supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+Please contact a server admin to get access for unlimited messages.
 
-Please contact a server admin to get access for unlimited messages.`
+Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
                     }, messageToReplyTo);
 
                     return;
@@ -609,7 +609,7 @@ ${fullPrompt}
 
             messageCountForUser.count++;
 
-            if (currentConfig.maxMessagePerUser !== -1 && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
+            if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
                 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
                 await channel.send({

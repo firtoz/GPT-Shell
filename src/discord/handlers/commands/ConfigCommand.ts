@@ -124,17 +124,16 @@ You can find your API key at [https://beta.openai.com/account/api-keys](https://
                             
 If you'd like to use the server's API key, please send me the /${CONFIG_COMMAND_NAME} command in a DM.
 
-Total messages sent by all users: ${totalSum}.`,
+Total messages sent by all users of this server's API key: ${totalSum}.`,
             });
         } else {
             fields.push({
                 name: 'Sent Messages',
                 value: `You sent ${messageCounter[user.id] ?? 0}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
 
-Total messages sent by all users: ${totalSum}.`
+Total messages sent by all users of this server's API key: ${totalSum}.`
             });
         }
-
 
         components[0] = components[0]
             .addComponents(
@@ -151,7 +150,7 @@ Total messages sent by all users: ${totalSum}.`
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId(TogglePersonalInServersButtonHandler.id)
-                    .setLabel(config.useKeyInServersToo ? 'Stop using on all servers' : 'Use on all servers')
+                    .setLabel(config.useKeyInServersToo ? 'Stop using API key on all servers' : 'Use API key on all servers')
                     .setStyle(config.useKeyInServersToo ? ButtonStyle.Danger : ButtonStyle.Primary),
             );
     }
