@@ -22,6 +22,8 @@ export class MultiMessage {
         message: Message<boolean>,
     }[];
 
+    public isLogMessage = false;
+
     // The thread that the messages will be sent to
     constructor(
         private channel: TextBasedChannel,
@@ -59,7 +61,11 @@ export class MultiMessage {
             // Iterate over the sections and update the corresponding messages
             await this.updateMessages(sections, embeds);
         } catch (e) {
-            logMessage(`Cannot send a message: [${this.channel.isDMBased() ? 'DM' : this.channel.guild?.name ?? this.channel.guildId}] <#${this.channel.id}>`)
+            if(!this.isLogMessage) {
+                logMessage(`Cannot send a message: [${this.channel.isDMBased() ? 'DM' : this.channel.guild?.name ?? this.channel.guildId}] <#${this.channel.id}>`)
+            } else {
+                console.error(`Cannot send a message: [${this.channel.isDMBased() ? 'DM' : this.channel.guild?.name ?? this.channel.guildId}] <#${this.channel.id}>`)
+            }
         }
     }
 

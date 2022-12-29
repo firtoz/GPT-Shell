@@ -1,11 +1,15 @@
-import {defineModal} from "./DefineModal";
+import {defineModal} from "../DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, setConfig} from "../../core/config";
+import {getConfig, setConfig} from "../../../core/config";
 import {parseInt} from "lodash";
 
 export const EmbedLimitModal = defineModal(
     'EMBED-LIMIT-MODAL',
     'Embed Limits',
+    {
+        label: 'Change Embed Limit',
+        textOnClick: 'Updating Embed Limit...',
+    },
     [{
         name: 'maxMessagesToEmbed',
         label: 'Max Messages To Embed',

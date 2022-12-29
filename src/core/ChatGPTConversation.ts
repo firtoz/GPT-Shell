@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {CreateCompletionResponse, CreateEmbeddingResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
@@ -9,21 +9,19 @@ import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelName} from "./ModelInfo";
 import {getOpenAIForId} from "./GetOpenAIForId";
 import {trySendingMessage} from "./TrySendingMessage";
-import {getGuildName} from "../discord/discordClient";
+import {discordClient, getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
 import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
-import './compute-cosine-similarity';
-import {ChatGPTConversationVersion0} from "./ChatGPTConversationVersion0";
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
 
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
-import {getConfig, getConfigForId, ServerConfigType} from "./config";
+import {getConfig, getConfigForId, getMessageCounter, saveMessageCounter, ConfigForIdType} from "./config";
 import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
@@ -49,12 +47,6 @@ function binarySearchIndex(numbers: number[], targetNumber: number): number {
 type HistoryConfig = {
     maxAllowed: number;
 }
-
-function sanitiseStringForRegex(input: string) {
-    // noinspection RegExpRedundantEscape
-    return input.replace(/[\[\]\$\.\^\{\}\(\)\*\+\?\\\|]/g, (match) => '\\' + match);
-}
-
 
 const messageFormattedDateTime = (date: Date) => {
     return date.toLocaleString('default', {
@@ -146,16 +138,14 @@ export class ChatGPTConversation extends BaseConversation {
         return result;
     }
 
-    async createHumanMessage(openai: OpenAIApi, user: User, message: string) {
+    async createHumanMessage(openai: OpenAIApi, user: User, message: string): Promise<MessageHistoryItem> {
         const messageId = v4();
         const timestamp = new Date().getTime();
-
-        const embeddingId = await this.tryCreateEmbeddingForMessage(openai, user, message, timestamp, messageId);
 
         const newMessageItem: MessageHistoryItem = {
             id: messageId,
             content: message,
-            embedding: embeddingId,
+            embedding: null,
             numTokens: 0,
             type: 'human',
             username: user.username,
@@ -235,13 +225,13 @@ export class ChatGPTConversation extends BaseConversation {
     }
 
     private async SendPromptToGPTChat(
-        config: ServerConfigType,
+        config: ConfigForIdType,
+        usingOpenAIForServer: boolean,
         openai: OpenAIApi,
         user: User,
         message: string,
         onProgress: (result: string, finished: boolean) => void,
-    ): Promise<string | null> {
-
+    ): Promise<void> {
         const modelInfo = config.modelInfo[this.model];
 
         let finished = false;
@@ -252,13 +242,15 @@ export class ChatGPTConversation extends BaseConversation {
             results: [],
         };
 
+        const inputMessageItem = await this.createHumanMessage(openai, user, message);
+
         while (!finished) {
             let response: AxiosResponse<CreateCompletionResponse> | undefined;
 
             try {
                 const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
 
-                const fullPrompt = await this.getFullPrompt(config, openai, user, message, latestResponseText, relevancyResultsCache);
+                const fullPrompt = await this.getFullPrompt(config, openai, user, inputMessageItem, latestResponseText, relevancyResultsCache);
 
                 response = await openai.createCompletion({
                     model: this.model,
@@ -270,6 +262,7 @@ export class ChatGPTConversation extends BaseConversation {
                     presence_penalty: 0,
                     user: user.id,
                 }) as any;
+
             } catch (e: any) {
                 if (e.isAxiosError) {
                     response = e.response;
@@ -289,7 +282,11 @@ export class ChatGPTConversation extends BaseConversation {
                 const data = response.data as unknown as CompletionError;
 
                 if (data.error?.type === 'insufficient_quota') {
-                    onProgress('[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.]]', true);
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
+                    onProgress(`[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.${usingOpenAIForServer ? `
+
+You can alternatively supply your own API key to me by sending me the /${CONFIG_COMMAND_NAME} command in a DM.` : ''}]]`, true);
                 } else if (data.error?.message) {
                     onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
                 } else {
@@ -306,7 +303,7 @@ export class ChatGPTConversation extends BaseConversation {
                 logMessage('Not enough choices?!');
                 finished = true;
 
-                return null;
+                return;
             }
 
             const choice = choices[0];
@@ -317,7 +314,7 @@ export class ChatGPTConversation extends BaseConversation {
                 logMessage('No text?!');
                 finished = true;
 
-                return null;
+                return;
             }
 
             latestResponseText += text;
@@ -329,14 +326,28 @@ export class ChatGPTConversation extends BaseConversation {
 
                 finished = false;
             } else {
+                if (onProgress) {
+                    onProgress(latestResponseText, true);
+                }
+
                 finished = true;
 
-                const newMessageItem = await this.createHumanMessage(openai, user, message);
+                const embeddingPromise = this.tryCreateEmbeddingForMessage(
+                    openai,
+                    user,
+                    inputMessageItem.content,
+                    inputMessageItem.timestamp!,
+                    inputMessageItem.id,
+                );
 
-                this.messageHistoryMap[newMessageItem.id] = newMessageItem;
-                this.messageHistory.push(newMessageItem.id);
+                const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, latestResponseText);
 
-                const responseMessage = await this.createResponseMessage(openai, this.username, user, latestResponseText);
+                inputMessageItem.embedding = await embeddingPromise;
+                const responseMessage = await createResponseMessagePromise;
+
+                this.messageHistoryMap[inputMessageItem.id] = inputMessageItem;
+                this.messageHistory.push(inputMessageItem.id);
+
                 this.messageHistory.push(responseMessage.id);
                 this.messageHistoryMap[responseMessage.id] = responseMessage;
 
@@ -344,15 +355,11 @@ export class ChatGPTConversation extends BaseConversation {
 
                 await this.persist();
 
-                if (onProgress) {
-                    onProgress(latestResponseText, true);
-                }
-
-                return latestResponseText;
+                return;
             }
         }
 
-        return null;
+        return;
     }
 
     async handlePrompt(
@@ -365,16 +372,47 @@ export class ChatGPTConversation extends BaseConversation {
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
-        const serverConfig = await getConfigForId(this.isDirectMessage ? user.id : this.guildId);
+        const configId = this.isDirectMessage ? user.id : this.guildId;
 
-        if (this.isDirectMessage) {
+        let usingOpenAIForServer = false;
+        let currentConfig: ConfigForIdType = await getConfigForId(user.id);
+
+        if (currentConfig.useKeyInServersToo) {
             openai = await getOpenAIForId(user.id);
-        } else {
-            openai = await getOpenAIForId(this.guildId);
+        }
 
-            if (!openai) {
-                // fallback to user's key...
-                openai = await getOpenAIForId(user.id);
+        if (!this.isDirectMessage && !openai) {
+            openai = await getOpenAIForId(this.guildId);
+            usingOpenAIForServer = true;
+            currentConfig = await getConfigForId(configId);
+        }
+
+        if (usingOpenAIForServer && currentConfig.maxMessagePerUser !== -1) {
+            const messageCounter = await getMessageCounter(configId);
+            const messageCountForUser = messageCounter[user.id] ?? {
+                count: 0,
+                warned: false,
+            };
+            if (messageCountForUser.count > currentConfig.maxMessagePerUser) {
+                const guild = await discordClient.guilds.fetch(this.guildId);
+                const member = await guild.members.fetch(user.id);
+
+                if (!currentConfig
+                    .exceptionRoleIds
+                    .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
+
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
+                    await trySendingMessage(channel, {
+                        content: `Reached max limit of messages for ${user.username}.
+                        
+Please contact a server admin to get access for unlimited messages.
+
+Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
+                    }, messageToReplyTo);
+
+                    return;
+                }
             }
         }
 
@@ -459,7 +497,9 @@ ${JSON.stringify(debugInfo, null, '  ')}
         if (inputValue.startsWith(promptPrefix) && user.id === adminPingId) {
             const input = inputValue.slice(promptPrefix.length);
 
-            const fullPrompt = await this.getFullPrompt(serverConfig, openai, user, input, '', {
+            const inputMessageItem = await this.createHumanMessage(openai, user, input);
+
+            const fullPrompt = await this.getFullPrompt(currentConfig, openai, user, inputMessageItem, '', {
                 searchPerformed: false,
                 results: [],
             }, true);
@@ -512,7 +552,7 @@ ${fullPrompt}
 
 
         try {
-            await channel.sendTyping();
+            channel.sendTyping().catch();
         } catch (e) {
             logMessage(`${await this.getLinkableId()} Cannot send typing..`, e);
         }
@@ -523,22 +563,32 @@ ${fullPrompt}
             this.lastDiscordMessageId = messageToReplyTo.id;
         }
 
-        const multiPromise = this.SendPromptToGPTChat(
-            serverConfig,
+        let promiseComplete = false;
+
+        const sendPromise = this.SendPromptToGPTChat(
+            currentConfig,
+            usingOpenAIForServer,
             openai,
             user,
             inputValue,
             (result, finished) => {
                 multi.update(result, finished);
 
-                if (finished && multi.messageList.length > 0) {
-                    this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id
-                    this.persist();
+                if (finished) {
+                    promiseComplete = true;
+
+                    if (multi.messageList.length > 0) {
+                        this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id
+                        this.persist();
+                    }
                 }
             }
         );
 
-        let promiseComplete = false;
+        sendPromise.finally(() => {
+            // complete it in case it somehow failed to send finished part
+            promiseComplete = true;
+        })
 
         const intervalId = setInterval(async () => {
             if (promiseComplete) {
@@ -553,13 +603,54 @@ ${fullPrompt}
             }
         }, 5000);
 
-        // When the promise completes, set the variable to true
-        // so that the interval stops
-        multiPromise.finally(() => {
-            promiseComplete = true;
-        });
+        await sendPromise;
 
-        await multiPromise;
+        if (usingOpenAIForServer) {
+            const messageCounter = await getMessageCounter(this.guildId);
+
+            const messageCountForUser = messageCounter[user.id] ?? {
+                count: 0,
+                warned: false,
+            };
+
+            messageCountForUser.count++;
+
+            if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
+                const guild = await discordClient.guilds.fetch(this.guildId);
+                const member = await guild.members.fetch(user.id);
+                if (!currentConfig
+                    .exceptionRoleIds
+                    .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
+                    await channel.send({
+                        content: '',
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle('Message Limit')
+                                .setDescription(`<@${user.id}> - You have sent ${messageCountForUser.count} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
+                             
+When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
+
+You can provide your API key to the bot by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+ 
+Please be aware of this and contact an Admin if you have any questions.
+
+Thank you for your understanding.`),
+                        ]
+                    });
+
+                    messageCountForUser.warned = true;
+                }
+            }
+
+            messageCounter[user.id] = {
+                count: messageCountForUser.count + 1,
+                warned: messageCountForUser.warned,
+            };
+
+            await saveMessageCounter(this.guildId, messageCounter);
+        }
 
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
@@ -682,6 +773,12 @@ ${fullPrompt}
         openai: OpenAIApi,
         messageToReplyTo: Message<boolean> | undefined,
     ) {
+        const pinecone = await getPineconeClient();
+
+        if (!pinecone) {
+            return [];
+        }
+
         let rest = inputValue.slice(queryPrefix.length);
 
         const firstCommaIndex = rest.indexOf(',');
@@ -705,7 +802,22 @@ ${fullPrompt}
 
         const input = rest.slice(firstCommaIndex + 1).trimStart();
 
-        const messages = await this.getRelevantMessages(user, openai, input, orderWeight);
+        let embeddings: AxiosResponse<CreateEmbeddingResponse>;
+        try {
+            embeddings = await openai.createEmbedding({
+                user: user.id,
+                input: input,
+                model: 'text-embedding-ada-002',
+            }) as any as AxiosResponse<CreateEmbeddingResponse>;
+        } catch (e) {
+            logMessage(`${await this.getLinkableId()}: Cannot create embeddings`, e);
+
+            return;
+        }
+
+        const vector = embeddings.data.data[0].embedding;
+
+        const messages = await this.getRelevantMessages(user, openai, orderWeight, vector);
 
         if (messages.length === 0) {
             await this.sendReply(channel,
@@ -739,10 +851,10 @@ ${messageToPromptPart(item.message)}`;
     }
 
     private async getFullPrompt(
-        config: ServerConfigType,
+        config: ConfigForIdType,
         openai: OpenAIApi,
         user: User,
-        input: string,
+        inputMessageItem: MessageHistoryItem,
         latestResponseText: string,
         relevancyCheckCache: RelevancyCheckCache,
         debug: boolean = false,
@@ -752,8 +864,6 @@ ${messageToPromptPart(item.message)}`;
 
         const numInitialPromptTokens = encodeLength(initialPrompt);
         const currentResponseTokens = encodeLength(latestResponseText);
-
-        const inputMessageItem = await this.createHumanMessage(openai, user, input);
 
         const inputTokens = encodeLength(messageToPromptPart(inputMessageItem));
 
@@ -787,7 +897,22 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
                 .concat(inputMessageItem.content)
                 .join('\n');
 
-            const relevantMessages = await this.getRelevantMessages(user, openai, relevantMessageInput, 0.05);
+            let embeddings: AxiosResponse<CreateEmbeddingResponse>;
+            let vector: Array<number> | null = null;
+
+            try {
+                embeddings = await openai.createEmbedding({
+                    user: user.id,
+                    input: relevantMessageInput,
+                    model: 'text-embedding-ada-002',
+                }) as any as AxiosResponse<CreateEmbeddingResponse>;
+
+                vector = embeddings.data.data[0].embedding;
+            } catch (e) {
+                logMessage(`${await this.getLinkableId()}: Cannot create embeddings`, e);
+            }
+
+            const relevantMessages = await this.getRelevantMessages(user, openai, 0.05, vector);
 
             relevantMessages.sort((a, b) => {
                 return b.match.weighted - a.match.weighted;
@@ -838,6 +963,7 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
         }
 
         const latestMessagesAndCurrentPrompt = latestMessagesPlusNewMessage.map(messageToPromptPart).join('\n');
+
         return `${initialPrompt}
 ${includedRelevantMessages.length > 0 ? `${relevantPrefix}
 ${includedRelevantMessages.map(item => messageToPromptPart(item.message)).join('\n')}
@@ -848,11 +974,11 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
 [${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
     }
 
-    private async getRelevantMessages(user: User, openai: OpenAIApi, input: string, orderWeight: number):
+    private async getRelevantMessages(user: User, openai: OpenAIApi, orderWeight: number, vector: number[] | null):
         Promise<RelevancyResult[]> {
         const pinecone = await getPineconeClient();
 
-        if (!pinecone) {
+        if (!vector || !pinecone) {
             return [];
         }
 
@@ -865,22 +991,6 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
         }
 
         const scoreWeight = 1 - orderWeight;
-
-
-        let embeddings: AxiosResponse<CreateEmbeddingResponse>;
-        try {
-            embeddings = await openai.createEmbedding({
-                user: user.id,
-                input: input,
-                model: 'text-embedding-ada-002',
-            }) as any as AxiosResponse<CreateEmbeddingResponse>;
-        } catch (e) {
-            logMessage(`${await this.getLinkableId()}: Cannot create embeddings`, e);
-
-            return [];
-        }
-
-        const vector = embeddings.data.data[0].embedding;
 
         const queryParams: {
             topK: number;
@@ -1015,100 +1125,5 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
         }));
 
         logMessage('Initialisation complete.');
-    }
-
-    static async upgrade(fromDb: ChatGPTConversationVersion0): Promise<ChatGPTConversation | null> {
-        logMessage(`trying to convert ${await BaseConversation.GetLinkableId(fromDb)}(${fromDb.threadId})!`);
-
-        try {
-            const promptSplit = fromDb.allHistory.split(END_OF_PROMPT);
-
-            let promptStart = 0;
-            for (let i = 0; i < promptSplit.length; ++i) {
-                const promptPart = promptSplit[i];
-                if (promptPart.trim().endsWith('Generate only one response per prompt.')) {
-                    promptStart = i + 1;
-                    break;
-                }
-            }
-
-            const actualConversation = promptSplit.slice(promptStart);
-
-            const history: MessageHistoryItem[] = [];
-
-            for (let string of actualConversation) {
-                // ignore empty strings
-                if (string.trim().length === 0) {
-                    continue;
-                }
-
-                const originalRegex = /\s*(GPT-Shell:\s*?(?<response>(.|\n)*?))?\s*?((\n\((?<username>.*?)\|(?<userId>[0-9]+)\): (?<prompt>(.|\n)*))|$)/;
-                const newRegex = new RegExp(originalRegex.source.replace('GPT-Shell', sanitiseStringForRegex(fromDb.username)));
-                const match = string
-                    .match(newRegex)
-
-                if (!match || !match.groups) {
-                    throw new Error('No match!');
-                }
-
-                const {prompt, response, userId, username} = match.groups;
-
-                if (!response && !prompt) {
-                    logMessage({string, newRegex: newRegex.source});
-                    throw new Error('Something wrong with the string, no prompt or response');
-                }
-
-                if (response) {
-                    history.push({
-                        id: v4(),
-                        type: 'response',
-                        content: response.trimStart(),
-                        numTokens: encodeLength(response),
-                        embedding: null,
-                        timestamp: undefined,
-                        username: fromDb.username,
-                    });
-                }
-
-                if (prompt) {
-                    history.push({
-                        id: v4(),
-                        type: 'human',
-                        username: username,
-                        userId: userId,
-                        content: prompt,
-                        numTokens: encodeLength(prompt),
-                        embedding: null,
-                        timestamp: undefined,
-                    })
-                }
-            }
-
-            const result: ChatGPTConversation = new ChatGPTConversation(
-                fromDb.threadId,
-                fromDb.creatorId,
-                fromDb.guildId,
-                fromDb.username,
-                fromDb.model,
-            );
-
-            result.messageHistory = history.map(item => item.id);
-            result.messageHistoryMap = history.reduce((map, item) => {
-                map[item.id] = item;
-                return map;
-            }, {} as Record<string, MessageHistoryItem>);
-            result.deleted = false;
-            result.isDirectMessage = fromDb.isDirectMessage;
-            result.lastDiscordMessageId = fromDb.lastDiscordMessageId;
-            result.lastUpdated = fromDb.lastUpdated;
-
-            logMessage(`managed to convert ${await result.getLinkableId()}!`);
-
-            return result;
-        } catch (e) {
-            const adminPingId = getEnv('ADMIN_PING_ID')
-            logMessage(`${adminPingId ? `<@${adminPingId}>` : ''}! Could not upgrade conversation... ${await BaseConversation.GetLinkableId(fromDb)}`, e);
-            return null;
-        }
     }
 }

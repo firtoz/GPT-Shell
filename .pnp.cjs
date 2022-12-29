@@ -33,7 +33,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
-            ["compute-cosine-similarity", "npm:1.0.0"],\
             ["cross-env", "npm:7.0.3"],\
             ["discord-interactions", "npm:3.2.0"],\
             ["discord.js", "npm:14.7.1"],\
@@ -1899,41 +1898,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "linkType": "HARD"\
         }]\
       ]],\
-      ["compute-cosine-similarity", [\
-        ["npm:1.0.0", {\
-          "packageLocation": "./.yarn/cache/compute-cosine-similarity-npm-1.0.0-d12fb9c31a-274532b462.zip/node_modules/compute-cosine-similarity/",\
-          "packageDependencies": [\
-            ["compute-cosine-similarity", "npm:1.0.0"],\
-            ["compute-dot", "npm:1.1.0"],\
-            ["compute-l2norm", "npm:1.1.0"],\
-            ["validate.io-array", "npm:1.0.6"],\
-            ["validate.io-function", "npm:1.0.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["compute-dot", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/compute-dot-npm-1.1.0-ed7fbf43d8-390ccbc64a.zip/node_modules/compute-dot/",\
-          "packageDependencies": [\
-            ["compute-dot", "npm:1.1.0"],\
-            ["validate.io-array", "npm:1.0.6"],\
-            ["validate.io-function", "npm:1.0.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["compute-l2norm", [\
-        ["npm:1.1.0", {\
-          "packageLocation": "./.yarn/cache/compute-l2norm-npm-1.1.0-81a48becc4-58da02a696.zip/node_modules/compute-l2norm/",\
-          "packageDependencies": [\
-            ["compute-l2norm", "npm:1.1.0"],\
-            ["validate.io-array", "npm:1.0.6"],\
-            ["validate.io-function", "npm:1.0.2"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
       ["concat-map", [\
         ["npm:0.0.1", {\
           "packageLocation": "./.yarn/cache/concat-map-npm-0.0.1-85a921b7ee-902a9f5d89.zip/node_modules/concat-map/",\
@@ -2386,7 +2350,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@types/rimraf", "npm:3.0.2"],\
             ["@types/uuid", "npm:9.0.0"],\
             ["axios", "npm:1.1.3"],\
-            ["compute-cosine-similarity", "npm:1.0.0"],\
             ["cross-env", "npm:7.0.3"],\
             ["discord-interactions", "npm:3.2.0"],\
             ["discord.js", "npm:14.7.1"],\
@@ -3942,24 +3905,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/v8-compile-cache-lib-npm-3.0.1-4886071ece-78089ad549.zip/node_modules/v8-compile-cache-lib/",\
           "packageDependencies": [\
             ["v8-compile-cache-lib", "npm:3.0.1"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["validate.io-array", [\
-        ["npm:1.0.6", {\
-          "packageLocation": "./.yarn/cache/validate.io-array-npm-1.0.6-d265c3d6a6-54eca83ebc.zip/node_modules/validate.io-array/",\
-          "packageDependencies": [\
-            ["validate.io-array", "npm:1.0.6"]\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["validate.io-function", [\
-        ["npm:1.0.2", {\
-          "packageLocation": "./.yarn/cache/validate.io-function-npm-1.0.2-06c17f312a-e4cce2479a.zip/node_modules/validate.io-function/",\
-          "packageDependencies": [\
-            ["validate.io-function", "npm:1.0.2"]\
           ],\
           "linkType": "HARD"\
         }]\

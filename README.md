@@ -52,6 +52,15 @@ Set up the environment variables as described below.
 
 Then to start a development environment, run `yarn dev`. To build and run, run `yarn build` and then `yarn start`.
 
+Go to your server, and type the config command, and set the API key for your server using the config.
+
+```
+/chat-gpt-config
+```
+
+![config-api-key.png](config-api-key.png)
+
+
 ## Environment Variables
 
 The following environment variables are required for GPT-Shell to work properly.
@@ -69,9 +78,6 @@ Bot Token:
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
 - CONFIG_COMMAND_NAME: The name of the config command (if you want users to be able to configure their bot setup)
-
-OpenAI API Key:
-- OPENAI_API_KEY: The API key for your OpenAI account
 
 Discord Server Details:
 - MAIN_SERVER_ID: The Discord server where the bot lives
@@ -94,9 +100,6 @@ BOT_TOKEN=
 # Commands:
 COMMAND_NAME=chat-gpt
 CONFIG_COMMAND_NAME=chat-gpt-config
-
-# OpenAI API Key:
-OPENAI_API_KEY=
 
 # Discord Server Details:
 MAIN_SERVER_ID=

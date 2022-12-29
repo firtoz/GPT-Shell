@@ -8,7 +8,8 @@ import {
 } from "discord.js";
 import {Commands} from "../Commands";
 import {logMessage} from "../../utils/logMessage";
-import {ButtonCommands, ModalSubmitHandlers} from "../ButtonCommands";
+import {ButtonCommands} from "../ButtonCommands";
+import {ModalSubmitHandlers} from "../ModalSubmitHandlers";
 
 async function handleModalSubmit(client: Client, interaction: ModalSubmitInteraction) {
     const modalSubmit = ModalSubmitHandlers.find(c => c.id === interaction.customId);
@@ -21,7 +22,7 @@ async function handleModalSubmit(client: Client, interaction: ModalSubmitInterac
     try {
         await modalSubmit.run(client, interaction);
     } catch (e) {
-        logMessage(`Cannot run button command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
+        logMessage(`Cannot run modal submit command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
     }
     // return Promise.resolve(undefined);
 }
@@ -47,6 +48,17 @@ export default (client: Client): void => {
 };
 
 const handleButtonCommand = async (client: Client, interaction: ButtonInteraction): Promise<void> => {
+    const modalButtonCommand = ModalSubmitHandlers.find(c => c.buttonId === interaction.customId);
+    if (modalButtonCommand) {
+        try {
+            await modalButtonCommand.onButtonClick(interaction);
+        } catch (e) {
+            logMessage(`Cannot run button command in guild [${interaction.guild?.name ?? 'Unknown Guild'}]`, e);
+        }
+
+        return;
+    }
+
     const buttonCommand = ButtonCommands.find(c => c.id === interaction.customId);
     if (!buttonCommand) {
         await interaction.followUp({content: 'An error has occurred'});

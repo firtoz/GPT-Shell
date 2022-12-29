@@ -5,12 +5,12 @@ import {InitializeThreads} from "./ready/initializeThreads";
 import {logMessage} from "../../utils/logMessage";
 import {db} from "../../database/db";
 import {getEnv} from "../../utils/GetEnv";
-import {ConfigType, getConfig, getConfigForId, ServerConfigType} from "../../core/config";
+import {ConfigType, getConfig, getConfigForId, ConfigForIdType} from "../../core/config";
 import {mainServerId} from "../../core/MainServerId";
 import {getOpenAIForId} from "../../core/GetOpenAIForId";
 
 
-async function checkUsage(config: ServerConfigType) {
+async function checkUsage(config: ConfigForIdType) {
     try {
         const usage = await fetch("https://api.openai.com/v1/usage?date=2022-12-26", {
             "credentials": "include",
