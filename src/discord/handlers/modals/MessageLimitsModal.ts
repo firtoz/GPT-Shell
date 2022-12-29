@@ -1,6 +1,13 @@
 import {defineModal} from "../DefineModal";
 import {EmbedBuilder, ModalSubmitInteraction, TextInputStyle} from "discord.js";
-import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../core/config";
+import {
+    getConfig,
+    getConfigForId,
+    getMessageCounter,
+    saveMessageCounter,
+    setConfig,
+    setConfigForId
+} from "../../../core/config";
 import {parseInt} from "lodash";
 import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {getConfigIdForInteraction} from "../commands/ConfigCommand";
@@ -55,7 +62,19 @@ export const MessageLimitsModal = defineModal(
 
             if (!isNaN(maxMessagePerUserValue)) {
                 config.maxMessagePerUser = maxMessagePerUserValue < 0 ? -1 : maxMessagePerUserValue;
-                config.exceptionRoleIds = (exceptionRoleIds ?? '').split('\n').map(item => item.trim());
+                config.exceptionRoleIds = (exceptionRoleIds ?? '')
+                    .split('\n')
+                    .map(item => item.trim())
+                    .filter(item => item.length > 0);
+
+                const messageCounter = await getMessageCounter(configId);
+                for (let value of Object.values(messageCounter)) {
+                    if(value) {
+                        value.warned = false;
+                    }
+                }
+
+                await saveMessageCounter(configId, messageCounter);
 
                 await setConfigForId(configId, config);
 
@@ -63,7 +82,7 @@ export const MessageLimitsModal = defineModal(
                     content: '',
                     embeds: [
                         new EmbedBuilder()
-                            .setDescription(`Updated.\n${getMessageLimitsMessage(config)}`)
+                            .setDescription(`Updated.\n\n${getMessageLimitsMessage(config)}`)
                             .setColor(0x00ff00)
                     ],
                     components: [],

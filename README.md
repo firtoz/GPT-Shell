@@ -58,6 +58,7 @@ Go to your server, and type the config command, and set the API key for your ser
 /chat-gpt-config
 ```
 
+![config-api-key.png](config-api-key.png)
 
 
 ## Environment Variables

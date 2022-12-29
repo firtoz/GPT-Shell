@@ -129,7 +129,7 @@ Total messages sent by all users of this server's API key: ${totalSum}.`,
         } else {
             fields.push({
                 name: 'Sent Messages',
-                value: `You sent ${messageCounter[user.id] ?? 0}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
+                value: `You sent ${(messageCounter[user.id] ?? {count: 0}).count}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
 
 Total messages sent by all users of this server's API key: ${totalSum}.`
             });
@@ -259,7 +259,7 @@ If you'd like to use the server's API key, please send me the /${CONFIG_COMMAND_
 
                         const fields = [{
                             name: 'Sent Messages',
-                            value: `You sent ${messageCounter[commandInteraction.user.id] ?? 0}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
+                            value: `You sent ${(messageCounter[commandInteraction.user.id] ?? {count: 0}).count}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
                         }];
 
                         await commandInteraction.followUp({
