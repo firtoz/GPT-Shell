@@ -10,9 +10,6 @@ export type ConfigType = {
     maxMessagesToEmbed: number;
 };
 
-
-const OPENAI_API_KEY = getEnv('OPENAI_API_KEY');
-
 const defaultConfig: ConfigType = {
     pineconeOptions: null,
     maxMessagesToEmbed: 300,
@@ -45,8 +42,7 @@ export const setConfig = async (value: ConfigType) => {
 }
 
 
-
-export type ServerConfigType = {
+export type ConfigForIdType = {
     maxTokensForRecentMessages: number;
     modelInfo: Record<ModelName, {
         MAX_ALLOWED_TOKENS: number,
@@ -54,10 +50,11 @@ export type ServerConfigType = {
     }>;
     openAIApiKey: string | null;
     maxMessagePerUser: number;
+    useKeyInServersToo: boolean;
     exceptionRoleIds: string[];
 };
 
-const defaultServerConfig: ServerConfigType = {
+const defaultConfigForId: ConfigForIdType = {
     maxTokensForRecentMessages: 1000,
     modelInfo: {
         ['text-davinci-003']: {
@@ -66,18 +63,22 @@ const defaultServerConfig: ServerConfigType = {
         },
     },
     openAIApiKey: null,
+    useKeyInServersToo: false,
     maxMessagePerUser: -1,
     exceptionRoleIds: [],
 };
 
-const serverConfigState: Record<string, ServerConfigType | undefined> = {};
+const serverConfigState: Record<string, ConfigForIdType | undefined> = {};
 
-type MessageCounter = Record<string, number | undefined>;
+type MessageCounter = Record<string, {
+    count: number,
+    warned: boolean,
+} | undefined>;
 
 const messageCounterCache: Record<string, MessageCounter | undefined> = {};
 
 export const getMessageCounter = async (id: string): Promise<MessageCounter> => {
-    if(messageCounterCache[id] === undefined) {
+    if (messageCounterCache[id] === undefined) {
         const counter = await db.get<MessageCounter>(`MESSAGE-COUNTER-${id}`);
         messageCounterCache[id] = counter ?? {};
     }
@@ -92,15 +93,11 @@ export const saveMessageCounter = async (id: string, counter: MessageCounter) =>
 }
 
 const getConfigForIdInternal = async (id: string) => {
-    const defaultClone = _.cloneDeep(defaultServerConfig);
+    const defaultClone = _.cloneDeep(defaultConfigForId);
 
-    if(id === mainServerId) {
-        defaultClone.openAIApiKey = OPENAI_API_KEY;
-    } else {
-        defaultClone.openAIApiKey = await db.get<string>(`CONFIG-API-KEY-${id}`);
-    }
+    defaultClone.openAIApiKey = await db.get<string>(`CONFIG-API-KEY-${id}`);
 
-    const configFromDB = await db.get<ServerConfigType>(`BOT-CONFIG-FOR-${id}`);
+    const configFromDB = await db.get<ConfigForIdType>(`BOT-CONFIG-FOR-${id}`);
     if (configFromDB) {
         return Object.assign(defaultClone, configFromDB);
     } else {
@@ -115,10 +112,10 @@ export const getConfigForId = async (id: string) => {
         serverConfigState[id] = await getConfigForIdInternal(id);
     }
 
-    return serverConfigState[id] as ServerConfigType;
+    return serverConfigState[id] as ConfigForIdType;
 }
 
-export const setConfigForId = async (id: string, value: ServerConfigType) => {
+export const setConfigForId = async (id: string, value: ConfigForIdType) => {
     serverConfigState[id] = value;
 
     return await db.set(`BOT-CONFIG-FOR-${id}`, value);

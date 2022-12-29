@@ -21,7 +21,7 @@ export const OpenAIAPIKeyModal = defineModal(
         label: 'API Key',
         defaultValue: '',
         placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxx',
-        required: true,
+        required: false,
         style: TextInputStyle.Short,
     }], async (interaction) => {
         const {configId} = await getConfigIdForInteraction(interaction);
@@ -39,8 +39,32 @@ export const OpenAIAPIKeyModal = defineModal(
         try {
             const {apiKey} = values;
 
-            if (apiKey == null || apiKey.length < 2) {
-                throw new Error(`Invalid token supplied: '${apiKey}'.`);
+            const {configId, isDM} = await getConfigIdForInteraction(submitInteraction);
+
+            if (!configId) {
+                throw new Error('No config id found for interaction...');
+            }
+
+            if(apiKey == null || apiKey.length === 0) {
+                delete OpenAICache[configId];
+                const config = await getConfigForId(configId);
+
+                config.openAIApiKey = null;
+
+                await setConfigForId(configId, config);
+
+                await submitInteraction.followUp({
+                    content: '',
+                    embeds: [
+                        new EmbedBuilder()
+                            .setDescription(`Removed OpenAI API key for [${isDM ? `User:${submitInteraction.user.tag}`:
+                                `Server:${await getGuildName(configId)}`}].`)
+                            .setColor(0x00ff00)
+                    ],
+                    components: [],
+                });
+
+                return;
             }
 
             const api = new OpenAIApi(new Configuration({
@@ -52,10 +76,6 @@ export const OpenAIAPIKeyModal = defineModal(
                 const data = models.data;
 
                 if (data != null) {
-                    const {configId, isDM} = await getConfigIdForInteraction(submitInteraction);
-                    if (!configId) {
-                        throw new Error('No config id found for interaction...');
-                    }
 
                     logMessage(`GOOD token supplied for [${isDM ? `User:${submitInteraction.user.tag}`:
                         `Server:${await getGuildName(configId)}`}]`);
@@ -72,7 +92,8 @@ export const OpenAIAPIKeyModal = defineModal(
                         content: '',
                         embeds: [
                             new EmbedBuilder()
-                                .setDescription(`Updated OpenAI API key!`)
+                                .setDescription(`Updated OpenAI API key for [${isDM ? `User:${submitInteraction.user.tag}`:
+                                    `Server:${await getGuildName(configId)}`}]!`)
                                 .setColor(0x00ff00)
                         ],
                         components: [],

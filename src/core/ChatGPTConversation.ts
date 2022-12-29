@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {CreateCompletionResponse, CreateEmbeddingResponse, OpenAIApi} from 'openai';
 import {AxiosResponse} from "axios";
@@ -21,7 +21,7 @@ import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
-import {getConfig, getConfigForId, getMessageCounter, saveMessageCounter, ServerConfigType} from "./config";
+import {getConfig, getConfigForId, getMessageCounter, saveMessageCounter, ConfigForIdType} from "./config";
 import {getPineconeClient} from "./pinecone";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
@@ -225,7 +225,7 @@ export class ChatGPTConversation extends BaseConversation {
     }
 
     private async SendPromptToGPTChat(
-        config: ServerConfigType,
+        config: ConfigForIdType,
         openai: OpenAIApi,
         user: User,
         message: string,
@@ -348,14 +348,6 @@ export class ChatGPTConversation extends BaseConversation {
 
                 logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
 
-                if (!this.isDirectMessage) {
-                    const messageCounter = await getMessageCounter(this.guildId);
-
-                    messageCounter[user.id] = (messageCounter[user.id] ?? 0) + 1;
-
-                    await saveMessageCounter(this.guildId, messageCounter);
-                }
-
                 await this.persist();
 
                 return;
@@ -376,36 +368,46 @@ export class ChatGPTConversation extends BaseConversation {
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
         const configId = this.isDirectMessage ? user.id : this.guildId;
-        const serverConfig = await getConfigForId(configId);
 
-        if (!this.isDirectMessage && serverConfig.maxMessagePerUser != -1) {
+        let usingOpenAIForServer = false;
+        let currentConfig: ConfigForIdType = await getConfigForId(user.id);
+
+        if (currentConfig.useKeyInServersToo) {
+            openai = await getOpenAIForId(user.id);
+        }
+
+        if (!this.isDirectMessage && !openai) {
+            openai = await getOpenAIForId(this.guildId);
+            usingOpenAIForServer = true;
+            currentConfig = await getConfigForId(configId);
+        }
+
+        if (usingOpenAIForServer && currentConfig.maxMessagePerUser !== -1) {
             const messageCounter = await getMessageCounter(configId);
-            const messageCountForUser = messageCounter[user.id] ?? 0;
-            if (messageCountForUser > serverConfig.maxMessagePerUser) {
+            const messageCountForUser = messageCounter[user.id] ?? {
+                count: 0,
+                warned: false,
+            };
+            if (messageCountForUser.count > currentConfig.maxMessagePerUser) {
                 const guild = await discordClient.guilds.fetch(this.guildId);
                 const member = await guild.members.fetch(user.id);
 
-                if (!serverConfig
+                if (!currentConfig
                     .exceptionRoleIds
                     .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
 
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
                     await trySendingMessage(channel, {
-                        content: `Reached max limit of messages for ${user.username}.\n\nPlease contact a server admin to get access for unlimited messages.`
+                        content: `Reached max limit of messages for ${user.username}.
+                        
+Please supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+
+Please contact a server admin to get access for unlimited messages.`
                     }, messageToReplyTo);
 
                     return;
                 }
-            }
-        }
-
-        if (this.isDirectMessage) {
-            openai = await getOpenAIForId(user.id);
-        } else {
-            openai = await getOpenAIForId(this.guildId);
-
-            if (!openai) {
-                // fallback to user's key...
-                openai = await getOpenAIForId(user.id);
             }
         }
 
@@ -492,7 +494,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
             const inputMessageItem = await this.createHumanMessage(openai, user, input);
 
-            const fullPrompt = await this.getFullPrompt(serverConfig, openai, user, inputMessageItem, '', {
+            const fullPrompt = await this.getFullPrompt(currentConfig, openai, user, inputMessageItem, '', {
                 searchPerformed: false,
                 results: [],
             }, true);
@@ -559,7 +561,7 @@ ${fullPrompt}
         let promiseComplete = false;
 
         const sendPromise = this.SendPromptToGPTChat(
-            serverConfig,
+            currentConfig,
             openai,
             user,
             inputValue,
@@ -568,6 +570,7 @@ ${fullPrompt}
 
                 if (finished) {
                     promiseComplete = true;
+
                     if (multi.messageList.length > 0) {
                         this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id
                         this.persist();
@@ -595,6 +598,47 @@ ${fullPrompt}
         }, 5000);
 
         await sendPromise;
+
+        if (usingOpenAIForServer) {
+            const messageCounter = await getMessageCounter(this.guildId);
+
+            const messageCountForUser = messageCounter[user.id] ?? {
+                count: 0,
+                warned: false,
+            };
+
+            messageCountForUser.count++;
+
+            if (currentConfig.maxMessagePerUser !== -1 && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
+                const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
+                await channel.send({
+                    content: '',
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle('Message Limit')
+                            .setDescription(`<@${user.id}> - You have sent ${messageCountForUser.count} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
+                             
+When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
+
+You can provide your API key to the bot by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+ 
+Please be aware of this and contact an Admin if you have any questions.
+
+Thank you for your understanding.`),
+                    ]
+                });
+
+                messageCountForUser.warned = true;
+            }
+
+            messageCounter[user.id] = {
+                count: messageCountForUser.count + 1,
+                warned: messageCountForUser.warned,
+            };
+
+            await saveMessageCounter(this.guildId, messageCounter);
+        }
 
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
@@ -795,7 +839,7 @@ ${messageToPromptPart(item.message)}`;
     }
 
     private async getFullPrompt(
-        config: ServerConfigType,
+        config: ConfigForIdType,
         openai: OpenAIApi,
         user: User,
         inputMessageItem: MessageHistoryItem,

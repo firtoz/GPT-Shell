@@ -1,6 +1,6 @@
-import {ServerConfigType} from "../../../core/config";
+import {ConfigForIdType} from "../../../core/config";
 
-export function getMessageLimitsMessage(config: ServerConfigType) {
+export function getMessageLimitsMessage(config: ConfigForIdType) {
     return `Maximum messages per user: ${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser}.
                 
 If you set a positive number for this value, the bot will respond only up to this number of messages from users.
