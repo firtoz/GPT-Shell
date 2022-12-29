@@ -616,14 +616,19 @@ ${fullPrompt}
             messageCountForUser.count++;
 
             if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
-                const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+                const guild = await discordClient.guilds.fetch(this.guildId);
+                const member = await guild.members.fetch(user.id);
+                if (!currentConfig
+                    .exceptionRoleIds
+                    .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
+                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
-                await channel.send({
-                    content: '',
-                    embeds: [
-                        new EmbedBuilder()
-                            .setTitle('Message Limit')
-                            .setDescription(`<@${user.id}> - You have sent ${messageCountForUser.count} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
+                    await channel.send({
+                        content: '',
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle('Message Limit')
+                                .setDescription(`<@${user.id}> - You have sent ${messageCountForUser.count} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
                              
 When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
 
@@ -632,10 +637,11 @@ You can provide your API key to the bot by using \`/${CONFIG_COMMAND_NAME}\` in 
 Please be aware of this and contact an Admin if you have any questions.
 
 Thank you for your understanding.`),
-                    ]
-                });
+                        ]
+                    });
 
-                messageCountForUser.warned = true;
+                    messageCountForUser.warned = true;
+                }
             }
 
             messageCounter[user.id] = {
