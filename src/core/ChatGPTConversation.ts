@@ -15,7 +15,6 @@ import {getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
-import './compute-cosine-similarity';
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
 
