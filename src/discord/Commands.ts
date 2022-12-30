@@ -1,7 +1,7 @@
 import {Command} from "./Command";
 import {ChatGptCommand} from "./handlers/commands/ChatGptCommand";
-import {CustomPromptCommand} from "./handlers/commands/CustomPromptCommand";
 import {ConfigCommand} from "./handlers/commands/ConfigCommand";
+import {CustomPromptCommand} from "./handlers/commands/CustomPromptCommand";
 
 export const Commands: Command[] = [ChatGptCommand];
 

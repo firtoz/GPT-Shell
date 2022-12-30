@@ -1136,7 +1136,7 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
                 try {
                     await info.initialise();
                 } catch (e) {
-                    logMessage('Failed to initialise info with thread is ', info.threadId, e);
+                    logMessage('Failed to initialise info with thread id ', info.threadId, e);
                 }
             }
         }));

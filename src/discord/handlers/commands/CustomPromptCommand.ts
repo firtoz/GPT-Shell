@@ -1,7 +1,10 @@
 import {Command} from "../../Command";
-import {Client, CommandInteraction} from "discord.js";
+import {ChannelType, Client, CommandInteraction} from "discord.js";
 import {CustomPromptModal} from "../modals/CustomPromptModal";
 import {getEnv} from "../../../utils/GetEnv";
+import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
+import {getConfig, getConfigForId} from "../../../core/config";
 
 const CUSTOM_PROMPT_COMMAND_NAME = getEnv('CUSTOM_PROMPT_COMMAND_NAME');
 
@@ -13,17 +16,78 @@ export const CustomPromptCommand: Command | null = CUSTOM_PROMPT_COMMAND_NAME ? 
     deferred: false,
     ephemeral: true,
     async run(client: Client, interaction: CommandInteraction) {
-        if(interaction.user.id !== adminPingId) {
+        const channel = await client.channels.fetch(interaction.channelId);
+
+        if (!channel) {
             await interaction.reply({
                 ephemeral: true,
-                content: 'Only people with special permissions can use the custom prompt command.',
+                content: 'Could not find a channel for the command.',
             });
 
             return;
         }
-        const shown = await CustomPromptModal.show(interaction);
 
-        if(!shown) {
+
+        const botConfig = await getConfig();
+        const userOrServerHasPermissions = interaction.user.id !== adminPingId
+            || botConfig.promptPermissions.includes(interaction.user.id)
+            || (!channel.isDMBased() && botConfig.promptPermissions.includes(channel.guildId));
+
+        if (!userOrServerHasPermissions) {
+            await interaction.reply({
+                ephemeral: true,
+                content: `You or the server does not have permissions to define custom prompts.
+
+Please ask the bot owner for permissions.`,
+            });
+            return;
+        }
+
+        if (!channel.isDMBased()) {
+            if (channel.isThread()) {
+                const conversation = await retrieveConversation(channel.id);
+
+                if (!conversation) {
+                    await interaction.reply({
+                        ephemeral: true,
+                        content: `Thread not created by ${client.user!.username}.`,
+                    });
+                    return;
+                }
+
+                if (conversation.creatorId !== interaction.user.id) {
+                    await interaction.reply({
+                        ephemeral: true,
+                        content: `Only <@${interaction.user.id}> can edit the prompt in this thread.`,
+                    });
+
+                    return;
+                }
+            } else {
+                // typical channel
+                if (!interaction.memberPermissions?.has('Administrator')) {
+                    await interaction.reply({
+                        ephemeral: true,
+                        content: `Only server admins can set custom prompts for channels.`,
+                    });
+                    return;
+                }
+            }
+        } else {
+            if (channel.type === ChannelType.DM) {
+                // go ahead
+            } else {
+                await interaction.reply({
+                    ephemeral: true,
+                    content: `Only 1-1 DMs can be used as conversations so far.`,
+                });
+
+                return;
+            }
+        }
+
+        const shown = await CustomPromptModal.show(interaction);
+        if (!shown) {
             await interaction.reply({
                 ephemeral: true,
                 content: 'Cannot show modal',

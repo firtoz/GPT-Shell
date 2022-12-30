@@ -100,6 +100,7 @@ BOT_TOKEN=
 # Commands:
 COMMAND_NAME=chat-gpt
 CONFIG_COMMAND_NAME=chat-gpt-config
+CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
 
 # Discord Server Details:
 MAIN_SERVER_ID=
@@ -134,6 +135,18 @@ Then enter the pinecone configuration details.
 If you did it correctly, you should see something like this:
 
 ![config-set.png](config-set.png)
+
+## Custom Prompts
+By default, the bot behaves like a helpful social engineer.
+
+If you want the bot to behave differently, you can use a custom prompt.
+
+This can be done in a new channel dedicated to the bot, or a new conversation thread, or in DMs.
+
+> Warning: defining a custom prompt will erase the chat history!
+
+
+
 
 ## Contributions
 

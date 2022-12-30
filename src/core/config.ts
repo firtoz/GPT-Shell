@@ -8,11 +8,13 @@ import {mainServerId} from "./MainServerId";
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null,
     maxMessagesToEmbed: number;
+    promptPermissions: string[];
 };
 
 const defaultConfig: ConfigType = {
     pineconeOptions: null,
     maxMessagesToEmbed: 300,
+    promptPermissions: [],
 };
 
 const getConfigInternal = async () => {
@@ -27,7 +29,7 @@ const getConfigInternal = async () => {
 }
 
 let configState: ConfigType | null = null;
-export const getConfig = async () => {
+export const getConfig = async (): Promise<ConfigType> => {
     if (configState === null) {
         configState = await getConfigInternal();
     }

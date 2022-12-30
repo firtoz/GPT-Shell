@@ -75,8 +75,6 @@ export const CustomPromptModal = defineModal(
                 conversation.customPrompt = values.customPrompt;
             }
 
-            await conversation.deleteMessages(conversation.messageHistory.length);
-
             await conversation.persist();
 
             await submitInteraction.followUp({
