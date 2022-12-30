@@ -1,4 +1,4 @@
-import {END_OF_PROMPT, END_OF_TEXT} from "./constants";
+import {END_OF_PROMPT} from "./constants";
 
 export const getOriginalPrompt = (botUsername: string) => {
     return `Instructions for ${botUsername}: You're a regular Discord user. 
@@ -17,12 +17,25 @@ Mention dates and times in simple words.
 
 The conversations are in this format:
 
-[datetime] [username]: [MESSAGE 1 IN LANG X]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 1 IN LANG X]
-[datetime] [username2]: [MESSAGE 2 IN LANG Y]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2 IN LANG Y]
-[datetime] [username2]: [MESSAGE 2 IN LANG Z]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2 IN LANG Z]
+[datetime] [username]: [MESSAGE 1]
+[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 1]
+[datetime] [username]: [MESSAGE 2]
+[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2]
+
+Generate only one response per prompt.
+`;
+}
+
+
+export const getCustomPrompt = (botUsername: string, customPrompt: string) => {
+    return `Instructions for ${botUsername}: ${customPrompt}
+
+The conversations are in this format:
+
+[datetime] [username]: [MESSAGE 1]
+[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 1]
+[datetime] [username]: [MESSAGE 2]
+[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2]
 
 Generate only one response per prompt.
 `;

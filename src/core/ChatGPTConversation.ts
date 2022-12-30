@@ -11,7 +11,7 @@ import {getOpenAIForId} from "./GetOpenAIForId";
 import {trySendingMessage} from "./TrySendingMessage";
 import {discordClient, getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
-import {getOriginalPrompt} from "./GetOriginalPrompt";
+import {getCustomPrompt, getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
@@ -87,13 +87,15 @@ export class ChatGPTConversation extends BaseConversation {
 
     nextEmbedCheck: number = 0;
 
+    customPrompt: string | null = null;
+
     public version = ChatGPTConversation.latestVersion;
 
     constructor(
         threadId: string,
         creatorId: string,
         guildId: string,
-        private username: string,
+        public username: string,
         private model: ModelName,
     ) {
         super(threadId, creatorId, guildId);
@@ -462,33 +464,11 @@ ${JSON.stringify(debugInfo, null, '  ')}
                 toDelete = param;
             }
 
-            const deletedIndices = this.messageHistory.splice(this.messageHistory.length - toDelete);
-            const pinecone = await getPineconeClient();
-            if (pinecone != null) {
-                const embedIdsToDelete = deletedIndices
-                    .map(id => this.messageHistoryMap[id].embedding)
-                    .filter(item => item !== null) as string[];
-
-                try {
-                    await pinecone.delete({
-                        ids: embedIdsToDelete,
-                    });
-
-                    logMessage('Deleted ids from pinecone:', embedIdsToDelete);
-                } catch (e) {
-                    logMessage('Failed to delete from pinecone: ', e);
-                }
-            }
-
-            for (const id of deletedIndices) {
-                delete this.messageHistoryMap[id];
-            }
+            const deletedIndices = await this.deleteMessages(toDelete);
 
             await trySendingMessage(channel, {
                 content: `Deleted: \n${deletedIndices.length} message(s).`,
             });
-
-            await this.persist();
 
             return;
         }
@@ -572,7 +552,11 @@ ${fullPrompt}
             user,
             inputValue,
             (result, finished) => {
-                multi.update(result, finished);
+                if(this.customPrompt) {
+                    multi.update(`${this.username}:${result}`, finished);
+                } else {
+                    multi.update(result, finished);
+                }
 
                 if (finished) {
                     promiseComplete = true;
@@ -656,6 +640,33 @@ Thank you for your understanding.`),
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
             await this.persist();
         }
+    }
+
+    public async deleteMessages(toDelete: number) {
+        const deletedIndices = this.messageHistory.splice(this.messageHistory.length - toDelete);
+        const pinecone = await getPineconeClient();
+        if (pinecone != null) {
+            const embedIdsToDelete = deletedIndices
+                .map(id => this.messageHistoryMap[id].embedding)
+                .filter(item => item !== null) as string[];
+
+            try {
+                await pinecone.delete({
+                    ids: embedIdsToDelete,
+                });
+
+                logMessage('Deleted ids from pinecone:', embedIdsToDelete);
+            } catch (e) {
+                logMessage('Failed to delete from pinecone: ', e);
+            }
+        }
+
+        for (const id of deletedIndices) {
+            delete this.messageHistoryMap[id];
+        }
+
+        await this.persist();
+        return deletedIndices;
     }
 
     private async tryEmbedMany(user: User, openai: OpenAIApi, channel?: TextBasedChannel, messageToReplyTo?: Message<boolean>) {
@@ -859,7 +870,13 @@ ${messageToPromptPart(item.message)}`;
         relevancyCheckCache: RelevancyCheckCache,
         debug: boolean = false,
     ) {
-        const initialPrompt = getOriginalPrompt(this.username);
+        let initialPrompt: string;
+
+        if (this.customPrompt) {
+            initialPrompt = getCustomPrompt(this.username, this.customPrompt);
+        } else {
+            initialPrompt = getOriginalPrompt(this.username);
+        }
         const modelInfo = config.modelInfo[this.model];
 
         const numInitialPromptTokens = encodeLength(initialPrompt);
