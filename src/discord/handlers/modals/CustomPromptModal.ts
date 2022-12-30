@@ -25,6 +25,13 @@ export const CustomPromptModal = defineModal(
         placeholder: '',
         required: true,
         style: TextInputStyle.Paragraph,
+    }, {
+        name: 'temperature',
+        label: 'Temperature',
+        defaultValue: '0.8',
+        placeholder: '0 -> 1',
+        required: true,
+        style: TextInputStyle.Paragraph,
     }], async (interaction) => {
         const conversation = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
 
@@ -32,12 +39,14 @@ export const CustomPromptModal = defineModal(
             return {
                 customUsername: conversation.username ?? '',
                 customPrompt: conversation.customPrompt ?? '',
+                temperature: conversation.temperature === undefined ? '0.8' : `${conversation.temperature}`,
             };
         }
 
         return {
             customUsername: discordClient.user!.username,
             customPrompt: '',
+            temperature: '0.8',
         };
     },
     async (values, submitInteraction) => {
@@ -74,6 +83,16 @@ export const CustomPromptModal = defineModal(
             if (values.customPrompt) {
                 conversation.customPrompt = values.customPrompt;
             }
+            let temperature = conversation.temperature;
+            if(values.temperature !== undefined) {
+                temperature = parseFloat(values.temperature);
+
+                if(isNaN(temperature)) {
+                    temperature = conversation.temperature;
+                }
+            }
+
+            conversation.temperature = temperature;
 
             await conversation.persist();
 
@@ -81,7 +100,9 @@ export const CustomPromptModal = defineModal(
                 content: '',
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`Updated.\n\nTry speaking to ${values.customUsername!}!`)
+                        .setDescription(`Updated.
+
+Try speaking to ${values.customUsername!}!`)
                         .setColor(0x00ff00)
                 ],
                 components: [],

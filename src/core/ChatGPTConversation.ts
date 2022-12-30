@@ -89,6 +89,12 @@ export class ChatGPTConversation extends BaseConversation {
 
     customPrompt: string | null = null;
 
+    temperature: number = 0.8;
+
+    summary: string = '';
+
+    nextSummaryMessageCount: number = 5;
+
     public version = ChatGPTConversation.latestVersion;
 
     constructor(
@@ -257,14 +263,13 @@ export class ChatGPTConversation extends BaseConversation {
                 response = await openai.createCompletion({
                     model: this.model,
                     prompt: fullPrompt,
-                    temperature: 0.8,
+                    temperature: this.temperature,
                     max_tokens: maxTokens,
                     top_p: 0.9,
                     frequency_penalty: 0,
                     presence_penalty: 0,
                     user: user.id,
                 }) as any;
-
             } catch (e: any) {
                 if (e.isAxiosError) {
                     response = e.response;
@@ -440,10 +445,10 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
         }
 
         if (inputValue === '<DEBUG>') {
-            const {lastUpdated} = this;
+            const {lastUpdated, nextSummaryMessageCount} = this;
             const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
             const numMessages = this.messageHistory.length;
-            const debugInfo = {lastUpdated, numMessages, totalTokens};
+            const debugInfo = {lastUpdated, numMessages, totalTokens, nextSummaryMessageCount};
             const debugMessage = `Debug: 
 \`\`\`json
 ${JSON.stringify(debugInfo, null, '  ')}
@@ -552,7 +557,7 @@ ${fullPrompt}
             user,
             inputValue,
             (result, finished) => {
-                if(this.customPrompt) {
+                if (this.customPrompt) {
                     multi.update(`${this.username}:${result}`, finished);
                 } else {
                     multi.update(result, finished);
@@ -588,6 +593,36 @@ ${fullPrompt}
         }, 5000);
 
         await sendPromise;
+
+
+        if (channel.isThread()) {
+            if (this.messageHistory.length > this.nextSummaryMessageCount) {
+                const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
+
+                try {
+                    const response: AxiosResponse<CreateCompletionResponse> = await openai.createCompletion({
+                        model: this.model,
+                        prompt: `Please create a name for a discord thread that contains this conversation:
+
+${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageToPromptPart(item)).join('\n')}`,
+                        temperature: this.temperature,
+                        max_tokens: 512,
+                        top_p: 0.9,
+                        frequency_penalty: 0,
+                        presence_penalty: 0,
+                        user: user.id,
+                    }) as any;
+
+                    this.summary = response.data.choices[0].text!;
+                    this.nextSummaryMessageCount = this.messageHistory.length + 10;
+                    await this.persist();
+
+                    channel.setName(this.summary);
+                } catch (e) {
+                    logMessage(`Could not name thread ${await this.getLinkableId()}`, e);
+                }
+            }
+        }
 
         if (usingOpenAIForServer) {
             const messageCounter = await getMessageCounter(this.guildId);

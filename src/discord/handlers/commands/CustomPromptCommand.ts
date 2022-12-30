@@ -29,7 +29,7 @@ export const CustomPromptCommand: Command | null = CUSTOM_PROMPT_COMMAND_NAME ? 
 
 
         const botConfig = await getConfig();
-        const userOrServerHasPermissions = interaction.user.id !== adminPingId
+        const userOrServerHasPermissions = interaction.user.id === adminPingId
             || botConfig.promptPermissions.includes(interaction.user.id)
             || (!channel.isDMBased() && botConfig.promptPermissions.includes(channel.guildId));
 
