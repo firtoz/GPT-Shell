@@ -1,16 +1,25 @@
 import {
     ButtonBuilder,
-    ButtonInteraction,
-    Client,
+    ButtonInteraction, ButtonStyle,
+    Client, CommandInteraction, MessageComponentInteraction,
     ModalSubmitInteraction
 } from "discord.js";
 
-export interface ModalConfig {
+export type ModalButtonConfig = {
+    label: string,
+    style?: ButtonStyle,
+    textOnClick: string,
+};
+
+export type ModalConfig<TWithButton extends true | false> = {
     id: string;
-    buttonId: string;
     run: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
-
+} & (TWithButton extends false ? {
+    hasButton: false,
+    show (interaction: MessageComponentInteraction | CommandInteraction): Promise<boolean>,
+} : {
+    hasButton: true,
+    buttonId: string;
     getButtonComponent(): ButtonBuilder;
-
     onButtonClick(buttonInteraction: ButtonInteraction): Promise<void>;
-}
+});

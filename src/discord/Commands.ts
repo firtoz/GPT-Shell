@@ -1,5 +1,6 @@
 import {Command} from "./Command";
 import {ChatGptCommand} from "./handlers/commands/ChatGptCommand";
+import {CustomPromptCommand} from "./handlers/commands/CustomPromptCommand";
 import {ConfigCommand} from "./handlers/commands/ConfigCommand";
 
 export const Commands: Command[] = [ChatGptCommand];
@@ -7,4 +8,9 @@ export const Commands: Command[] = [ChatGptCommand];
 if (ConfigCommand) {
     Commands.push(ConfigCommand);
 }
+
+if(CustomPromptCommand) {
+    Commands.push(CustomPromptCommand);
+}
+
 

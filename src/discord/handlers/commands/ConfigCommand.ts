@@ -30,6 +30,7 @@ import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {TogglePersonalInServersButtonHandler} from "../buttonCommandHandlers/TogglePersonalInServersButtonHandler";
 import {ChatChannelsModal} from "../modals/ChatChannelsModal";
 
+
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 if (!CONFIG_COMMAND_NAME) {
     throw new Error(`CONFIG_COMMAND_NAME env variable is obligatory.`);

@@ -10,6 +10,7 @@ import {Commands} from "../Commands";
 import {logMessage} from "../../utils/logMessage";
 import {ButtonCommands} from "../ButtonCommands";
 import {ModalSubmitHandlers} from "../ModalSubmitHandlers";
+import {ModalConfig} from "../handlers/ModalConfig";
 
 async function handleModalSubmit(client: Client, interaction: ModalSubmitInteraction) {
     const modalSubmit = ModalSubmitHandlers.find(c => c.id === interaction.customId);
@@ -48,7 +49,7 @@ export default (client: Client): void => {
 };
 
 const handleButtonCommand = async (client: Client, interaction: ButtonInteraction): Promise<void> => {
-    const modalButtonCommand = ModalSubmitHandlers.find(c => c.buttonId === interaction.customId);
+    const modalButtonCommand = ModalSubmitHandlers.find(c => c.hasButton && c.buttonId === interaction.customId) as ModalConfig<true>;
     if (modalButtonCommand) {
         try {
             await modalButtonCommand.onButtonClick(interaction);
@@ -81,9 +82,11 @@ const handleSlashCommand = async (client: Client, interaction: CommandInteractio
         return;
     }
 
-    await interaction.deferReply({
-        ephemeral: slashCommand.ephemeral || false,
-    });
+    if(slashCommand.deferred !== false) {
+        await interaction.deferReply({
+            ephemeral: slashCommand.ephemeral || false,
+        });
+    }
 
     try {
         slashCommand.run(client, interaction);

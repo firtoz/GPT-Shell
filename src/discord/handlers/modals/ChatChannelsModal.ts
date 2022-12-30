@@ -1,17 +1,7 @@
 import {defineModal} from "../DefineModal";
-import {EmbedBuilder, ModalSubmitInteraction, TextInputStyle} from "discord.js";
-import {
-    getConfig,
-    getConfigForId,
-    getMessageCounter,
-    saveMessageCounter,
-    setConfig,
-    setConfigForId
-} from "../../../core/config";
-import {parseInt} from "lodash";
-import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {EmbedBuilder, TextInputStyle} from "discord.js";
+import {getConfigForId, setConfigForId} from "../../../core/config";
 import {getConfigIdForInteraction} from "../commands/ConfigCommand";
-import {getMessageLimitsMessage} from "../commands/GetMessageLimitsMessage";
 
 export const ChatChannelsModal = defineModal(
     'CHAT-CHANNELS-MODAL',

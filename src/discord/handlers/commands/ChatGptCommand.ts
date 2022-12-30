@@ -19,6 +19,8 @@ import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {trySendingMessage} from "../../../core/TrySendingMessage";
 import {BaseConversation} from "../../../core/BaseConversation";
 import {ConversationFactory} from "../../../core/ConversationFactory";
+import {retrieveConversation} from "../../../core/RetrieveConversation";
+import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
 
@@ -150,7 +152,15 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         return;
     }
 
+
     const conversation = ConversationFactory.create(thread.id, userId, interaction.guildId, discordClient.user!.username, model);
+
+    const existingConvo = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
+
+    if(existingConvo && existingConvo.version == ChatGPTConversation.latestVersion) {
+        conversation.username = existingConvo.username;
+        conversation.customPrompt = existingConvo.customPrompt;
+    }
 
     await conversation.persist();
 
@@ -163,7 +173,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
             inputValue
         );
     } else {
-        await trySendingMessage(thread, {content: `[[<@${userId}>, ${client.user!.username} will respond to your messages in this thread.]]`}, undefined);
+        await trySendingMessage(thread, {content: `[[<@${userId}>, ${conversation.username} will respond to your messages in this thread.]]`}, undefined);
     }
 }
 

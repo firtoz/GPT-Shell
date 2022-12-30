@@ -73,7 +73,7 @@ export class ConversationFactory {
         guildId: string,
         username: string,
         model: ModelName,
-    ): BaseConversation {
+    ): ChatGPTConversation {
         return new ChatGPTConversation(threadId, creatorId, guildId, username, model);
     }
 }

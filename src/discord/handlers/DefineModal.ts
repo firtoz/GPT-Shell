@@ -1,5 +1,8 @@
 import {
-    ActionRowBuilder, ButtonBuilder, ButtonStyle,
+    ActionRowBuilder,
+    APITextInputComponent,
+    ButtonBuilder,
+    ButtonStyle, CommandInteraction,
     MessageComponentInteraction,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -7,9 +10,9 @@ import {
     TextInputStyle
 } from "discord.js";
 import {Narrow} from "ts-toolbelt/out/Function/Narrow";
-import {ModalConfig} from "./ModalConfig";
+import {ModalButtonConfig, ModalConfig} from "./ModalConfig";
 import {logMessage} from "../../utils/logMessage";
-import {EmbedLimitModal} from "./modals/EmbedLimitModal";
+import _ from "lodash";
 
 type ModalInput = {
     name: string;
@@ -18,24 +21,21 @@ type ModalInput = {
     placeholder?: string;
     required: boolean;
     style: TextInputStyle;
+    minLength?: number;
+    maxLength?: number;
 };
 
 type ModalValues<TInputs extends ModalInput[]> = { [K in TInputs[number]['name']]?: string };
-export const defineModal = <TInputs extends ModalInput[]>(
+
+export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends ModalButtonConfig | null>(
     id: string,
     title: string,
-    buttonConfig: {
-        label: string,
-        style?: ButtonStyle,
-        textOnClick: string,
-    },
+    buttonConfig: TButtonConfig,
     inputs: Narrow<TInputs>,
-    getCurrentValues: (interaction: MessageComponentInteraction) => Promise<ModalValues<TInputs>>,
+    getCurrentValues: (interaction: MessageComponentInteraction | CommandInteraction) => Promise<ModalValues<TInputs>>,
     onSubmit: (values: ModalValues<TInputs>, interaction: ModalSubmitInteraction) => void,
-): ModalConfig => {
-    const buttonId = id + '-button';
-
-    const show = async (interaction: MessageComponentInteraction) => {
+): ModalConfig<TButtonConfig extends null ? false : true> => {
+    const show = async (interaction: MessageComponentInteraction | CommandInteraction) => {
         const modal = new ModalBuilder()
             .setCustomId(id)
             .setTitle(title);
@@ -51,6 +51,14 @@ export const defineModal = <TInputs extends ModalInput[]>(
                     .setRequired(input.required)
                     .setStyle(input.style);
 
+                if(input.minLength != undefined) {
+                    inputBuilder = inputBuilder.setMinLength(input.minLength)
+                }
+
+                if(input.maxLength != undefined) {
+                    inputBuilder = inputBuilder.setMaxLength(input.maxLength)
+                }
+
                 if (input.placeholder) {
                     inputBuilder = inputBuilder.setPlaceholder(input.placeholder);
                 }
@@ -60,13 +68,19 @@ export const defineModal = <TInputs extends ModalInput[]>(
 
             // Show the modal to the user
             await interaction.showModal(modal);
+
+            return true;
         } catch (e) {
             logMessage(`Failed to show modal for id ${id}`, e);
+
+            return false;
         }
     }
-    return {
+
+    const result: ModalConfig<false> = {
+        hasButton: false,
         id,
-        buttonId,
+        show,
         async run(client, submitInteraction) {
             await submitInteraction.deferReply({
                 ephemeral: true,
@@ -78,21 +92,35 @@ export const defineModal = <TInputs extends ModalInput[]>(
             });
 
             await onSubmit(values, submitInteraction);
-        },
-        getButtonComponent() {
-            return new ButtonBuilder()
-                .setCustomId(buttonId)
-                .setLabel(buttonConfig.label)
-                .setStyle(buttonConfig.style ?? ButtonStyle.Primary)
-        },
-        async onButtonClick(buttonInteraction) {
-            await show(buttonInteraction);
-
-            await buttonInteraction.editReply({
-                content: buttonConfig.textOnClick,
-                components: [],
-                embeds: [],
-            });
         }
+    };
+
+    if(buttonConfig !== null) {
+        const buttonId = id + '-button';
+
+        const newResult: ModalConfig<true> = {
+            ..._.omit(result, "show"),
+            hasButton: true,
+            buttonId,
+            getButtonComponent() {
+                return new ButtonBuilder()
+                    .setCustomId(buttonId)
+                    .setLabel(buttonConfig.label)
+                    .setStyle(buttonConfig.style ?? ButtonStyle.Primary)
+            },
+            async onButtonClick(buttonInteraction) {
+                await show(buttonInteraction);
+
+                await buttonInteraction.editReply({
+                    content: buttonConfig.textOnClick,
+                    components: [],
+                    embeds: [],
+                });
+            }
+        };
+
+        return newResult as any;
+    } else {
+        return result as any;
     }
 }
