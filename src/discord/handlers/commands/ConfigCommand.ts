@@ -28,6 +28,7 @@ import {getMessageLimitsMessage} from "./GetMessageLimitsMessage";
 import {MessageLimitsModal} from "../modals/MessageLimitsModal";
 import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {TogglePersonalInServersButtonHandler} from "../buttonCommandHandlers/TogglePersonalInServersButtonHandler";
+import {ChatChannelsModal} from "../modals/ChatChannelsModal";
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 if (!CONFIG_COMMAND_NAME) {
@@ -159,11 +160,27 @@ Total messages sent by all users of this server's API key: ${totalSum}.`
         .setTitle(`${isDM ? `USER [${user.tag}]` : `SERVER [${await getGuildName(configId)}]`} Config`)
         .setFields(fields);
 
+    const embeds = [
+        embedForServerOrUser,
+    ];
+
+
+    if (!isDM) {
+        embeds.push(new EmbedBuilder()
+            .setTitle('Auto-Chat Channels')
+            .setDescription(`${config.chatChannelIds.length > 0 ? config.chatChannelIds.map(item => `<#${item}>`).join('\n') : 'None specified.'}`)
+        )
+
+        components.push(new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                ChatChannelsModal.getButtonComponent(),
+            )
+        );
+    }
+
     return {
         ephemeral: true,
-        embeds: [
-            embedForServerOrUser,
-        ],
+        embeds,
         components,
     };
 }

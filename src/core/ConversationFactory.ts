@@ -5,14 +5,25 @@ import {DMChannel, GuildTextBasedChannel, Message} from "discord.js";
 import {BaseConversation} from "./BaseConversation";
 import {ChatGPTConversation} from "./ChatGPTConversation";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/messageReceivedInThread";
+import {getConfigForId} from "./config";
 
 export class ConversationFactory {
 
     static async handleChannelMessage(channelId: string, message: Message<boolean>, currentBotId: string, channel: GuildTextBasedChannel) {
         let conversation = await retrieveConversation(channelId);
 
+        const configId = channel.guildId;
+        const config = await getConfigForId(configId);
+        if (config.chatChannelIds.includes(channelId)) {
+            conversation = await ConversationFactory.handleMessageAndReturnConversation(conversation, channelId, message, channel);
+
+            await conversation.persist();
+
+            return;
+        }
+
         if (message.mentions.users.has(currentBotId)) {
-            conversation = await ConversationFactory.handleMessageAndReturnInfo(conversation, channelId, message, channel);
+            conversation = await ConversationFactory.handleMessageAndReturnConversation(conversation, channelId, message, channel);
             conversation.lastDiscordMessageId = message.id;
 
             await conversation.persist();
@@ -24,14 +35,14 @@ export class ConversationFactory {
         }
     }
 
-    static async handleMessageAndReturnInfo(
-        info: BaseConversation | null,
+    static async handleMessageAndReturnConversation(
+        conversation: BaseConversation | null,
         channelId: string,
         message: Message<boolean>,
         channel: DMChannel | GuildTextBasedChannel
     ): Promise<BaseConversation> {
-        if (info === null) {
-            info = new ChatGPTConversation(channelId,
+        if (conversation === null) {
+            conversation = new ChatGPTConversation(channelId,
                 message.author.id,
                 message.guildId ?? '',
                 discordClient.user!.username,
@@ -39,21 +50,21 @@ export class ConversationFactory {
             );
 
             if (channel.isDMBased()) {
-                info.isDirectMessage = true;
+                conversation.isDirectMessage = true;
             }
 
-            await info.persist();
+            await conversation.persist();
         }
 
-        messageReceivedInThread[info.threadId] = true;
-        await info.handlePrompt(
+        messageReceivedInThread[conversation.threadId] = true;
+        await conversation.handlePrompt(
             message.author,
             channel,
             message.content,
             message,
         );
-        info.lastDiscordMessageId = message.id;
-        return info;
+        conversation.lastDiscordMessageId = message.id;
+        return conversation;
     }
 
     static create(
