@@ -632,7 +632,7 @@ ${fullPrompt}
                              
 When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
 
-You can provide your API key to the bot by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+You can provide your API key by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
  
 Please be aware of this and contact an Admin if you have any questions.
 

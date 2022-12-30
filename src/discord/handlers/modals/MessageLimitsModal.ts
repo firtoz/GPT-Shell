@@ -22,7 +22,7 @@ export const MessageLimitsModal = defineModal(
     },
     [{
         name: 'maxMessagePerUser',
-        label: 'Tokens for Recent Messages',
+        label: 'Max Messages Allowed for Non-API Key Users',
         defaultValue: '',
         placeholder: '',
         required: true,
