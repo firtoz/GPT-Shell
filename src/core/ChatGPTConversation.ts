@@ -407,7 +407,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
             const messageCounter = await getMessageCounter(configId);
             const messageCountForUser: MessageCountInfo = getMessageCountForUser(messageCounter, userId);
 
-            if(messageCountForUser.nextReset < new Date().getTime()) {
+            if (messageCountForUser.nextReset < new Date().getTime()) {
                 messageCountForUser.limitCount = 0;
                 messageCountForUser.nextReset = getNowPlusOneMonth();
 
@@ -458,36 +458,48 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
             return;
         }
 
+        const botConfig = await getConfig();
+
         if (inputValue === '<DEBUG>') {
-            const {lastUpdated, nextSummaryMessageCount} = this;
-            const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
-            const numMessages = this.messageHistory.length;
-            const debugInfo = {lastUpdated, numMessages, totalTokens, nextSummaryMessageCount};
-            const debugMessage = `Debug: 
+            const userOrServerHasPermissions = user.id === adminPingId
+                || botConfig.promptPermissions.includes(user.id);
+
+            if (userOrServerHasPermissions) {
+                const {lastUpdated, nextSummaryMessageCount} = this;
+                const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
+                const numMessages = this.messageHistory.length;
+                const debugInfo = {lastUpdated, numMessages, totalTokens, nextSummaryMessageCount};
+                const debugMessage = `Debug: 
 \`\`\`json
 ${JSON.stringify(debugInfo, null, '  ')}
 \`\`\``;
 
-            await trySendingMessage(channel, {content: debugMessage}, messageToReplyTo);
+                await trySendingMessage(channel, {content: debugMessage}, messageToReplyTo);
+            }
 
             return;
         }
 
         const deletePrefix = '<DELETE>';
         if (inputValue.startsWith(deletePrefix)) {
-            let rest = inputValue.slice(deletePrefix.length);
+            const userOrServerHasPermissions = user.id === adminPingId
+                || botConfig.promptPermissions.includes(user.id);
 
-            let toDelete = 1;
-            const param = parseInt(rest);
-            if (!isNaN(param)) {
-                toDelete = param;
+            if (userOrServerHasPermissions) {
+                let rest = inputValue.slice(deletePrefix.length);
+
+                let toDelete = 1;
+                const param = parseInt(rest);
+                if (!isNaN(param)) {
+                    toDelete = param;
+                }
+
+                const deletedIndices = await this.deleteMessages(toDelete);
+
+                await trySendingMessage(channel, {
+                    content: `Deleted: \n${deletedIndices.length} message(s).`,
+                });
             }
-
-            const deletedIndices = await this.deleteMessages(toDelete);
-
-            await trySendingMessage(channel, {
-                content: `Deleted: \n${deletedIndices.length} message(s).`,
-            });
 
             return;
         }
