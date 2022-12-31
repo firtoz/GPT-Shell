@@ -23,7 +23,7 @@ export async function handleThread(
         } else if (!info.shownAllowExternalsInfo) {
             info.shownAllowExternalsInfo = true;
             await info.sendReply(channel, `<@${info.creatorId}>: If you'd like others to be able to chat in this thread,
-             please type exactly \`<TOGGLE_EXTERNALS>\` in this thread.`);
+             please type exactly \`<TOGGLE_EXTERNALS>\` in this thread. This message will be shown only once.`);
         }
     }
 

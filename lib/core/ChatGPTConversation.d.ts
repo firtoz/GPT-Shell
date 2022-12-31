@@ -15,6 +15,8 @@ export declare class ChatGPTConversation extends BaseConversation {
     temperature: number;
     summary: string;
     nextSummaryMessageCount: number;
+    allowExternals: boolean;
+    shownAllowExternalsInfo: boolean;
     version: number;
     constructor(threadId: string, creatorId: string, guildId: string, username: string, model: ModelName);
     static handleRetrievalFromDB(fromDb: ChatGPTConversation): Promise<ChatGPTConversation>;
@@ -37,7 +39,7 @@ export declare class ChatGPTConversation extends BaseConversation {
     private testQuery;
     private getFullPrompt;
     private getRelevantMessages;
-    private sendReply;
+    sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>): Promise<void>;
     private getDebugName;
     static initialiseAll(): Promise<void>;
 }
