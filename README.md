@@ -143,9 +143,18 @@ If you want the bot to behave differently, you can use a custom prompt.
 
 This can be done in a new channel dedicated to the bot, or a new conversation thread, or in DMs.
 
-> Warning: defining a custom prompt will erase the chat history!
+You can use the `/chat-gpt-prompt` command, if you have the permissions, and you can set the custom prompt
+for the bot by filling the form.
 
+This command can be used in:
+- channels (if you are a server admin)
+- threads (if you are the one who created the thread)
+- DMs
 
+The temperature is the same as OpenAI's temperature parameter. 0 means it becoems repetitive, 1 means it becomes a bit chaotic.
+Default is 0.8 for GPT-Shell.
+
+![custom-prompt.png](custom-prompt.png)
 
 
 ## Contributions
