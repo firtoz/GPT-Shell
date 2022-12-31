@@ -1,0 +1,32 @@
+import { ModelName } from "./ModelInfo";
+import { PineconeConfigOpts } from "./pinecone";
+export type ConfigType = {
+    pineconeOptions: PineconeConfigOpts | null;
+    maxMessagesToEmbed: number;
+    promptPermissions: string[];
+};
+export declare const getConfig: () => Promise<ConfigType>;
+export declare const setConfig: (value: ConfigType) => Promise<void>;
+export type ConfigForIdType = {
+    maxTokensForRecentMessages: number;
+    modelInfo: Record<ModelName, {
+        MAX_ALLOWED_TOKENS: number;
+        MAX_TOKENS_PER_RESPONSE: number;
+    }>;
+    openAIApiKey: string | null;
+    maxMessagePerUser: number;
+    useKeyInServersToo: boolean;
+    chatChannelIds: string[];
+    exceptionRoleIds: string[];
+};
+export type MessageCountInfo = {
+    count: number;
+    limitCount: number;
+    warned: boolean;
+    nextReset: number;
+};
+export type MessageCounter = Record<string, MessageCountInfo | undefined>;
+export declare const getMessageCounter: (id: string) => Promise<MessageCounter>;
+export declare const saveMessageCounter: (id: string, counter: MessageCounter) => Promise<void>;
+export declare const getConfigForId: (id: string) => Promise<ConfigForIdType>;
+export declare const setConfigForId: (id: string, value: ConfigForIdType) => Promise<void>;

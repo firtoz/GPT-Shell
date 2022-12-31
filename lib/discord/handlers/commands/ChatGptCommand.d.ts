@@ -1,2 +1,2 @@
-import { Command } from "../Command";
+import { Command } from "../../Command";
 export declare const ChatGptCommand: Command;

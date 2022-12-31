@@ -7,6 +7,7 @@ export declare class MultiMessage {
         cached: string;
         message: Message<boolean>;
     }[];
+    isLogMessage: boolean;
     constructor(channel: TextBasedChannel, firstMessage?: Message<boolean>, messageToReplyTo?: Message<boolean> | undefined);
     update(message: string, finished: boolean, error?: boolean): Promise<void>;
     private updateMessages;
