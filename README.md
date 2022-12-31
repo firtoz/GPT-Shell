@@ -77,7 +77,7 @@ Bot Token:
 
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
-- CONFIG_COMMAND_NAME: The name of the config command (if you want users to be able to configure their bot setup)
+- CONFIG_COMMAND_NAME: The name of the config command
 
 Discord Server Details:
 - MAIN_SERVER_ID: The Discord server where the bot lives
@@ -85,6 +85,9 @@ Discord Server Details:
 - MAIN_SERVER_INVITE: (Optional) The ideally non-expiring server invite link (if you want users to add the bot to their
   server)
 - USE_SAME_API_KEY_FOR_ALL: (Optional) When set to 'true', it will allow any server or user to use the bot without needing to provide their own API keys.
+- ADMIN_PING_ID: Bot owner's Discord id (that's you!)
+  
+  Used to let you send some special commands and configure the bot.
 
 You can set the environment variables in any way you like, or place an .env.local file at the root of your project,
 next to `package.json`, that looks like this:
@@ -106,7 +109,8 @@ CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
 MAIN_SERVER_ID=
 LOG_CHANNEL_ID=
 MAIN_SERVER_INVITE=
-USE_SAME_API_KEY_FOR_ALL=
+ADMIN_PING_ID=
+USE_SAME_API_KEY_FOR_ALL=false
 ```
 
 
@@ -137,7 +141,7 @@ If you did it correctly, you should see something like this:
 ![config-set.png](config-set.png)
 
 ## Custom Prompts
-By default, the bot behaves like a helpful social engineer.
+By default, the bot behaves like a helpful software engineer.
 
 If you want the bot to behave differently, you can use a custom prompt.
 
