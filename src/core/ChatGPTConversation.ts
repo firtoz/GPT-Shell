@@ -103,6 +103,9 @@ export class ChatGPTConversation extends BaseConversation {
 
     nextSummaryMessageCount: number = 5;
 
+    allowExternals: boolean = false;
+    shownAllowExternalsInfo: boolean = false;
+
     public version = ChatGPTConversation.latestVersion;
 
     constructor(
@@ -459,6 +462,19 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
         }
 
         const botConfig = await getConfig();
+
+        if (inputValue === '<TOGGLE_EXTERNALS>' && user.id === this.creatorId) {
+            this.allowExternals = !this.allowExternals;
+
+            await this.sendReply(channel, `${this.allowExternals ? 'Allowing anyone to converse in this thread.' :
+                'Not allowing anyone else to converse in this thread any more.'}
+
+To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
+
+            await this.persist();
+
+            return;
+        }
 
         if (inputValue === '<DEBUG>') {
             const userOrServerHasPermissions = user.id === adminPingId
@@ -1140,7 +1156,7 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
         });
     }
 
-    private sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
+    public sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
         return new MultiMessage(channel, undefined, messageToReplyTo).update(message, true);
     }
 
