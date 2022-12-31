@@ -30,6 +30,7 @@ import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {TogglePersonalInServersButtonHandler} from "../buttonCommandHandlers/TogglePersonalInServersButtonHandler";
 import {ChatChannelsModal} from "../modals/ChatChannelsModal";
 import {getMessageCountForUser} from "../../../core/GetMessageCountForUser";
+import {PromptPermissionsModal} from "../modals/PromptPermissionsModal";
 
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -238,6 +239,7 @@ As new messages are sent, they will be stored in long term memory one by one, so
                         .addComponents(
                             PineconeModal.getButtonComponent(),
                             EmbedLimitModal.getButtonComponent(),
+                            PromptPermissionsModal.getButtonComponent(),
                         ),
                 ]
             });

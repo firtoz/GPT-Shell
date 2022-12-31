@@ -5,6 +5,7 @@ import {TokenLimitsModal} from "./handlers/modals/TokenLimitsModal";
 import {OpenAIAPIKeyModal} from "./handlers/modals/OpenAIAPIKeyModal";
 import {MessageLimitsModal} from "./handlers/modals/MessageLimitsModal";
 import {ChatChannelsModal} from "./handlers/modals/ChatChannelsModal";
+import {PromptPermissionsModal} from "./handlers/modals/PromptPermissionsModal";
 import {CustomPromptModal} from "./handlers/modals/CustomPromptModal";
 
 export const ModalSubmitHandlers: ModalConfig<any>[] = [
@@ -14,5 +15,6 @@ export const ModalSubmitHandlers: ModalConfig<any>[] = [
     OpenAIAPIKeyModal,
     MessageLimitsModal,
     ChatChannelsModal,
+    PromptPermissionsModal,
     CustomPromptModal,
 ];
