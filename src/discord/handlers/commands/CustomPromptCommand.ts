@@ -55,10 +55,11 @@ Please ask the bot owner for permissions.`,
                     return;
                 }
 
-                if (conversation.creatorId !== interaction.user.id) {
+                if (!(interaction.memberPermissions?.has('Administrator')
+                    || conversation.creatorId === interaction.user.id)) {
                     await interaction.reply({
                         ephemeral: true,
-                        content: `Only <@${interaction.user.id}> can edit the prompt in this thread.`,
+                        content: `Only <@${conversation.creatorId}> or a server admin can edit the prompt in this thread.`,
                     });
 
                     return;

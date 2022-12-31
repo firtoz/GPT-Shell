@@ -463,7 +463,7 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
 
         const botConfig = await getConfig();
 
-        if (inputValue === '<TOGGLE_EXTERNALS>' && user.id === this.creatorId) {
+        if (inputValue === '<TOGGLE_EXTERNALS>' && user.id === this.creatorId && channel.isThread()) {
             this.allowExternals = !this.allowExternals;
 
             await this.sendReply(channel, `${this.allowExternals ? 'Allowing anyone to converse in this thread.' :

@@ -2,11 +2,11 @@ import {
     AnyThreadChannel,
     ApplicationCommandOptionData,
     ApplicationCommandOptionType,
-    ApplicationCommandType,
+    ApplicationCommandType, ChannelType,
     Client,
     CommandInteraction, EmbedBuilder,
-    EmbedType, Message,
-    ThreadAutoArchiveDuration
+    EmbedType, Message, TextChannel,
+    ThreadAutoArchiveDuration, ThreadChannel
 } from "discord.js";
 import {Command} from "../../Command";
 import {getEnv} from "../../../utils/GetEnv";
@@ -23,6 +23,7 @@ import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
 
 const COMMAND_NAME = getEnv('COMMAND_NAME');
+const PRIVATE_COMMAND_NAME = getEnv('PRIVATE_COMMAND_NAME');
 
 if (COMMAND_NAME == null) {
     throw new Error('No command name?');
@@ -37,7 +38,7 @@ const options: ApplicationCommandOptionData[] = [
     }
 ];
 
-async function handleChat(interaction: CommandInteraction, client: Client<boolean>, model: ModelName) {
+async function handleChat(interaction: CommandInteraction, client: Client<boolean>, model: ModelName, isPrivate = false) {
     if (!interaction.inGuild()) {
         return;
     }
@@ -96,7 +97,15 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     let referenceThreadHere: Message | null = null;
 
-    if (channel?.isThread()) {
+    if (isPrivate) {
+        message = await interaction.followUp({
+            ephemeral: true,
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('Creating new private thread...'),
+            ]
+        });
+    } else if (channel?.isThread()) {
         referenceThreadHere = await interaction.followUp({
             options: {
                 username: user.username,
@@ -128,11 +137,37 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
     }
 
     try {
-        thread = await message.startThread({
-            name: threadName,
-            reason: 'ChatGPT',
-            autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
-        });
+        if (isPrivate) {
+            const messageChannel = await discordClient.channels.fetch(message.channelId);
+            if (messageChannel && messageChannel instanceof TextChannel) {
+                const privateThread = await messageChannel.threads.create({
+                    name: threadName,
+                    reason: 'ChatGPT',
+                    autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+                    type: ChannelType.PrivateThread,
+                });
+
+                await privateThread.members.add(userId);
+
+                await interaction.followUp({
+                    ephemeral: true,
+                    embeds: [new EmbedBuilder()
+                        .setTitle('Created Private Thread')
+                        .setDescription(`Link: <#${privateThread.id}>.`)
+                    ]
+                });
+
+                thread = privateThread as AnyThreadChannel;
+            } else {
+                return;
+            }
+        } else {
+            thread = await message.startThread({
+                name: threadName,
+                reason: 'ChatGPT',
+                autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+            });
+        }
 
         if (referenceThreadHere != null) {
             await referenceThreadHere.edit({
@@ -148,7 +183,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
         } catch (e) {
             logMessage(`Cannot even follow up in <#${message.channelId}> of ${message.guild?.name}.`);
         }
-        logMessage(`Cannot create thread in <#${message.channelId}> of ${message.guild?.name}.`);
+        logMessage(`Cannot create thread in <#${message.channelId}> of ${message.guild?.name}.`, e);
         return;
     }
 
@@ -157,7 +192,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     const existingConvo = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
 
-    if(existingConvo && existingConvo.version == ChatGPTConversation.latestVersion) {
+    if (existingConvo && existingConvo.version == ChatGPTConversation.latestVersion) {
         conversation.username = existingConvo.username;
         conversation.customPrompt = existingConvo.customPrompt;
     }
@@ -188,4 +223,16 @@ export const ChatGptCommand: Command = {
         await handleChat(interaction, client, model);
     }
 };
+export const PrivateChatGptCommand: Command | null = PRIVATE_COMMAND_NAME ? {
+    name: PRIVATE_COMMAND_NAME,
+    dmPermission: false,
+    ephemeral: true,
+    description: "Starts a private chat",
+    type: ApplicationCommandType.ChatInput,
+    options,
+    run: async (client: Client, interaction: CommandInteraction) => {
+        const model = 'text-davinci-003';
+        await handleChat(interaction, client, model, true);
+    }
+} : null;
 
