@@ -92,7 +92,7 @@ export const CustomPromptModal = defineModal(
                 }
             }
 
-            conversation.temperature = temperature;
+            conversation.temperature = Math.min(Math.max(temperature, 0), 1);
 
             await conversation.persist();
 
