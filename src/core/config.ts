@@ -4,6 +4,7 @@ import {ModelName} from "./ModelInfo";
 import {getEnv} from "../utils/GetEnv";
 import {PineconeConfigOpts} from "./pinecone";
 import {mainServerId} from "./MainServerId";
+import {getNowPlusOneMonth} from "./GetMessageCountForUser";
 
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null,
@@ -74,16 +75,29 @@ const defaultConfigForId: ConfigForIdType = {
 
 const serverConfigState: Record<string, ConfigForIdType | undefined> = {};
 
-type MessageCounter = Record<string, {
+export type MessageCountInfo = {
     count: number,
+    limitCount: number,
     warned: boolean,
-} | undefined>;
+    nextReset: number,
+};
+export type MessageCounter = Record<string, MessageCountInfo | undefined>;
 
 const messageCounterCache: Record<string, MessageCounter | undefined> = {};
 
 export const getMessageCounter = async (id: string): Promise<MessageCounter> => {
     if (messageCounterCache[id] === undefined) {
         const counter = await db.get<MessageCounter>(`MESSAGE-COUNTER-${id}`);
+        if (counter) {
+            for (let value of Object.values(counter)) {
+                if (value) {
+                    if (!value.nextReset) {
+                        value.nextReset = getNowPlusOneMonth();
+                    }
+                }
+            }
+        }
+
         messageCounterCache[id] = counter ?? {};
     }
 

@@ -21,8 +21,16 @@ import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
-import {getConfig, getConfigForId, getMessageCounter, saveMessageCounter, ConfigForIdType} from "./config";
+import {
+    ConfigForIdType,
+    getConfig,
+    getConfigForId,
+    getMessageCounter,
+    MessageCountInfo,
+    saveMessageCounter
+} from "./config";
 import {getPineconeClient} from "./pinecone";
+import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 
@@ -379,13 +387,14 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
-        const configId = this.isDirectMessage ? user.id : this.guildId;
+        const userId = user.id;
+        const configId = this.isDirectMessage ? userId : this.guildId;
 
         let usingOpenAIForServer = false;
-        let currentConfig: ConfigForIdType = await getConfigForId(user.id);
+        let currentConfig: ConfigForIdType = await getConfigForId(userId);
 
         if (currentConfig.useKeyInServersToo) {
-            openai = await getOpenAIForId(user.id);
+            openai = await getOpenAIForId(userId);
         }
 
         if (!this.isDirectMessage && !openai) {
@@ -396,13 +405,18 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
 
         if (usingOpenAIForServer && currentConfig.maxMessagePerUser !== -1) {
             const messageCounter = await getMessageCounter(configId);
-            const messageCountForUser = messageCounter[user.id] ?? {
-                count: 0,
-                warned: false,
-            };
-            if (messageCountForUser.count > currentConfig.maxMessagePerUser) {
+            const messageCountForUser: MessageCountInfo = getMessageCountForUser(messageCounter, userId);
+
+            if(messageCountForUser.nextReset < new Date().getTime()) {
+                messageCountForUser.limitCount = 0;
+                messageCountForUser.nextReset = getNowPlusOneMonth();
+
+                await saveMessageCounter(configId, messageCounter);
+            }
+
+            if (messageCountForUser.limitCount > currentConfig.maxMessagePerUser) {
                 const guild = await discordClient.guilds.fetch(this.guildId);
-                const member = await guild.members.fetch(user.id);
+                const member = await guild.members.fetch(userId);
 
                 if (!currentConfig
                     .exceptionRoleIds
@@ -439,7 +453,7 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
         }
 
 
-        if (inputValue === '<EMBED>' && user.id === adminPingId) {
+        if (inputValue === '<EMBED>' && userId === adminPingId) {
             await this.tryEmbedMany(user, openai, channel, messageToReplyTo);
             return;
         }
@@ -479,7 +493,7 @@ ${JSON.stringify(debugInfo, null, '  ')}
         }
 
         const promptPrefix = '<PROMPT>';
-        if (inputValue.startsWith(promptPrefix) && user.id === adminPingId) {
+        if (inputValue.startsWith(promptPrefix) && userId === adminPingId) {
             const input = inputValue.slice(promptPrefix.length);
 
             const inputMessageItem = await this.createHumanMessage(openai, user, input);
@@ -499,8 +513,8 @@ ${fullPrompt}
         }
 
         const historyPrefix = '<HISTORY>';
-        if (inputValue.startsWith(historyPrefix) && user.id === adminPingId) {
-            const historyConfig = await db.get<HistoryConfig>(`HISTORY-CONFIG-${user.id}`);
+        if (inputValue.startsWith(historyPrefix) && userId === adminPingId) {
+            const historyConfig = await db.get<HistoryConfig>(`HISTORY-CONFIG-${userId}`);
 
             if (!historyConfig) {
                 await new MultiMessage(channel, undefined, messageToReplyTo)
@@ -525,7 +539,7 @@ ${fullPrompt}
         }
 
         const queryPrefix = '<QUERY>';
-        if (inputValue.startsWith(queryPrefix) && user.id === adminPingId) {
+        if (inputValue.startsWith(queryPrefix) && userId === adminPingId) {
             const pinecone = await getPineconeClient();
             if (pinecone != null) {
                 await this.testQuery(inputValue, queryPrefix, channel, user, openai, messageToReplyTo);
@@ -610,7 +624,7 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
                         top_p: 0.9,
                         frequency_penalty: 0,
                         presence_penalty: 0,
-                        user: user.id,
+                        user: userId,
                     }) as any;
 
                     this.summary = response.data.choices[0].text!;
@@ -627,16 +641,14 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
         if (usingOpenAIForServer) {
             const messageCounter = await getMessageCounter(this.guildId);
 
-            const messageCountForUser = messageCounter[user.id] ?? {
-                count: 0,
-                warned: false,
-            };
+            const messageCountForUser: MessageCountInfo = getMessageCountForUser(messageCounter, userId);
 
             messageCountForUser.count++;
+            messageCountForUser.limitCount++;
 
-            if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.count > currentConfig.maxMessagePerUser * 0.75) {
+            if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.limitCount > currentConfig.maxMessagePerUser * 0.75) {
                 const guild = await discordClient.guilds.fetch(this.guildId);
-                const member = await guild.members.fetch(user.id);
+                const member = await guild.members.fetch(userId);
                 if (!currentConfig
                     .exceptionRoleIds
                     .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
@@ -647,7 +659,7 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
                         embeds: [
                             new EmbedBuilder()
                                 .setTitle('Message Limit')
-                                .setDescription(`<@${user.id}> - You have sent ${messageCountForUser.count} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
+                                .setDescription(`<@${userId}> - You have sent ${messageCountForUser.limitCount} messages out of the maximum allowed ${currentConfig.maxMessagePerUser}.
                              
 When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
 
@@ -663,10 +675,7 @@ Thank you for your understanding.`),
                 }
             }
 
-            messageCounter[user.id] = {
-                count: messageCountForUser.count + 1,
-                warned: messageCountForUser.warned,
-            };
+            messageCounter[userId] = messageCountForUser;
 
             await saveMessageCounter(this.guildId, messageCounter);
         }
@@ -1179,3 +1188,4 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
         logMessage('Initialisation complete.');
     }
 }
+

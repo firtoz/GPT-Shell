@@ -29,6 +29,7 @@ import {MessageLimitsModal} from "../modals/MessageLimitsModal";
 import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {TogglePersonalInServersButtonHandler} from "../buttonCommandHandlers/TogglePersonalInServersButtonHandler";
 import {ChatChannelsModal} from "../modals/ChatChannelsModal";
+import {getMessageCountForUser} from "../../../core/GetMessageCountForUser";
 
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -131,7 +132,7 @@ Total messages sent by all users of this server's API key: ${totalSum}.`,
         } else {
             fields.push({
                 name: 'Sent Messages',
-                value: `You sent ${(messageCounter[user.id] ?? {count: 0}).count}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
+                value: `You sent ${getMessageCountForUser(messageCounter, user.id).limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
 
 Total messages sent by all users of this server's API key: ${totalSum}.`
             });
@@ -277,7 +278,7 @@ If you'd like to use the server's API key, please send me the /${CONFIG_COMMAND_
 
                         const fields = [{
                             name: 'Sent Messages',
-                            value: `You sent ${(messageCounter[commandInteraction.user.id] ?? {count: 0}).count}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
+                            value: `You sent ${getMessageCountForUser(messageCounter, commandInteraction.user.id).limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
                         }];
 
                         await commandInteraction.followUp({
