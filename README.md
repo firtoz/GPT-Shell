@@ -77,6 +77,7 @@ Bot Token:
 
 Commands:
 - COMMAND_NAME: The name of the chat-gpt command
+- PRIVATE_COMMAND_NAME: Command to create private threads.
 - CONFIG_COMMAND_NAME: The name of the config command
 
 Discord Server Details:
@@ -102,6 +103,7 @@ BOT_TOKEN=
 
 # Commands:
 COMMAND_NAME=chat-gpt
+PRIVATE_COMMAND_NAME=chat-gpt-private
 CONFIG_COMMAND_NAME=chat-gpt-config
 CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
 
