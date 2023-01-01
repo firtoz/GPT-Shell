@@ -659,7 +659,7 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
                     this.nextSummaryMessageCount = this.messageHistory.length + 10;
                     await this.persist();
 
-                    channel.setName(this.summary);
+                    await channel.setName(this.summary.slice(0, 90));
                 } catch (e) {
                     logMessage(`Could not name thread ${await this.getLinkableId()}`, e);
                 }

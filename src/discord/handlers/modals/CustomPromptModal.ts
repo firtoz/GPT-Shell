@@ -14,38 +14,36 @@ export const CustomPromptModal = defineModal(
         label: 'Custom Username',
         defaultValue: '',
         placeholder: '',
-        required: true,
+        required: false,
         style: TextInputStyle.Short,
-        minLength: 2,
-        maxLength: 40,
     }, {
         name: 'customPrompt',
         label: 'Custom Prompt',
         defaultValue: '',
         placeholder: '',
-        required: true,
+        required: false,
         style: TextInputStyle.Paragraph,
     }, {
         name: 'temperature',
         label: 'Temperature',
         defaultValue: '0.8',
         placeholder: '0 -> 1',
-        required: true,
+        required: false,
         style: TextInputStyle.Paragraph,
     }], async (interaction) => {
         const conversation = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
 
         if (conversation) {
             return {
-                customUsername: conversation.username ?? '',
-                customPrompt: conversation.customPrompt ?? '',
+                customUsername: conversation.username ?? ' ',
+                customPrompt: conversation.customPrompt ?? ' ',
                 temperature: conversation.temperature === undefined ? '0.8' : `${conversation.temperature}`,
             };
         }
 
         return {
             customUsername: discordClient.user!.username,
-            customPrompt: '',
+            customPrompt: ' ',
             temperature: '0.8',
         };
     },
@@ -77,19 +75,25 @@ export const CustomPromptModal = defineModal(
                 }
             }
 
-            if (values.customUsername) {
+            if (values.customUsername && values.customUsername.trim().length > 0) {
                 conversation.username = values.customUsername;
+            } else {
+                conversation.username = discordClient.user!.username;
             }
-            if (values.customPrompt) {
+            if (values.customPrompt && values.customPrompt.trim().length > 0) {
                 conversation.customPrompt = values.customPrompt;
+            } else {
+                conversation.customPrompt = '';
             }
             let temperature = conversation.temperature;
-            if(values.temperature !== undefined) {
+            if(values.temperature !== undefined && values.temperature.length > 0) {
                 temperature = parseFloat(values.temperature);
 
                 if(isNaN(temperature)) {
                     temperature = conversation.temperature;
                 }
+            } else {
+                temperature = 0.8;
             }
 
             conversation.temperature = Math.min(Math.max(temperature, 0), 1);
@@ -102,7 +106,7 @@ export const CustomPromptModal = defineModal(
                     new EmbedBuilder()
                         .setDescription(`Updated.
 
-Try speaking to ${values.customUsername!}!`)
+Try speaking to ${conversation.username!}!`)
                         .setColor(0x00ff00)
                 ],
                 components: [],
