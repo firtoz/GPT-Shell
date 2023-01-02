@@ -1,10 +1,13 @@
 import { ModelName } from "./ModelInfo";
 import { PineconeConfigOpts } from "./pinecone";
+import { CreateModerationResponseResultsInnerCategoryScores } from "openai";
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null;
     maxMessagesToEmbed: number;
     promptPermissions: string[];
+    moderationThreshold: CreateModerationResponseResultsInnerCategoryScores;
 };
+export declare function getDefaultModerationThresholds(): CreateModerationResponseResultsInnerCategoryScores;
 export declare const getConfig: () => Promise<ConfigType>;
 export declare const setConfig: (value: ConfigType) => Promise<void>;
 export type ConfigForIdType = {
