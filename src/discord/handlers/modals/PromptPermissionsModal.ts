@@ -1,7 +1,6 @@
 import {defineModal} from "../DefineModal";
 import {EmbedBuilder, TextInputStyle} from "discord.js";
-import {getConfig, getConfigForId, setConfig, setConfigForId} from "../../../core/config";
-import {getConfigIdForInteraction} from "../commands/ConfigCommand";
+import {getConfig, setConfig} from "../../../core/config";
 
 export const PromptPermissionsModal = defineModal(
     'PROMPT-PERMISSIONS-MODAL',
@@ -62,4 +61,3 @@ ${config.promptPermissions.join('\n')}`)
             });
         }
     });
-

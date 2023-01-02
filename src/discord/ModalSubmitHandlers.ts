@@ -7,6 +7,7 @@ import {MessageLimitsModal} from "./handlers/modals/MessageLimitsModal";
 import {ChatChannelsModal} from "./handlers/modals/ChatChannelsModal";
 import {PromptPermissionsModal} from "./handlers/modals/PromptPermissionsModal";
 import {CustomPromptModal} from "./handlers/modals/CustomPromptModal";
+import {ModerationsModal} from "./handlers/modals/ModerationsModal";
 
 export const ModalSubmitHandlers: ModalConfig<any>[] = [
     PineconeModal,
@@ -16,5 +17,6 @@ export const ModalSubmitHandlers: ModalConfig<any>[] = [
     MessageLimitsModal,
     ChatChannelsModal,
     PromptPermissionsModal,
+    ModerationsModal,
     CustomPromptModal,
 ];

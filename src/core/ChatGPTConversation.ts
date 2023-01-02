@@ -2,7 +2,13 @@ import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
 import {EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
-import {CreateCompletionResponse, CreateEmbeddingResponse, OpenAIApi} from 'openai';
+import {
+    CreateCompletionResponse,
+    CreateEmbeddingResponse,
+    CreateModerationResponse,
+    CreateModerationResponseResultsInnerCategoryScores,
+    OpenAIApi
+} from 'openai';
 import {AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
@@ -585,6 +591,35 @@ ${fullPrompt}
         }
 
         const multi = new MultiMessage(channel, undefined, messageToReplyTo);
+
+        try {
+            const moderationResponse: AxiosResponse<CreateModerationResponse> = await openai.createModeration({
+                input: inputValue,
+            }) as any;
+
+            const moderationScores = moderationResponse.data.results[0].category_scores;
+            const entries = Object.entries(moderationScores);
+
+            const failures = entries.filter(([key, value]) => {
+                return value > botConfig.moderationThreshold[key as keyof CreateModerationResponseResultsInnerCategoryScores];
+            });
+
+            logMessage(`${await this.getLinkableId()} Moderation:`, Object.fromEntries(entries.map(([key, value]) => [key, value.toFixed(2)])));
+
+            if (failures.length > 0) {
+                await multi.update(`[[MESSAGE BLOCKED!
+
+OpenAI moderation failed:
+
+${failures.map(([key]) => {
+                    return `${key}`;
+                }).join('\n')}]]`, true);
+
+                return;
+            }
+        } catch (e) {
+            logMessage(`${await this.getLinkableId()} moderation fail`, e);
+        }
 
         if (messageToReplyTo) {
             this.lastDiscordMessageId = messageToReplyTo.id;

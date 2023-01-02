@@ -5,17 +5,33 @@ import {getEnv} from "../utils/GetEnv";
 import {PineconeConfigOpts} from "./pinecone";
 import {mainServerId} from "./MainServerId";
 import {getNowPlusOneMonth} from "./GetMessageCountForUser";
+import {CreateModerationResponseResultsInnerCategoryScores} from "openai";
 
 export type ConfigType = {
     pineconeOptions: PineconeConfigOpts | null,
     maxMessagesToEmbed: number;
     promptPermissions: string[];
+
+    moderationThreshold: CreateModerationResponseResultsInnerCategoryScores;
 };
+
+export function getDefaultModerationThresholds(): CreateModerationResponseResultsInnerCategoryScores {
+    return {
+        "hate": 1,
+        "self-harm": 1,
+        "hate/threatening": 1,
+        "sexual/minors": 0.6,
+        "violence/graphic": 1,
+        "sexual": 0.6,
+        "violence": 1,
+    };
+}
 
 const defaultConfig: ConfigType = {
     pineconeOptions: null,
     maxMessagesToEmbed: 300,
     promptPermissions: [],
+    moderationThreshold: getDefaultModerationThresholds()
 };
 
 const getConfigInternal = async () => {

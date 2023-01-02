@@ -2,6 +2,7 @@ import {getEnv} from "../../../utils/GetEnv";
 import {Command} from "../../Command";
 import {
     ActionRowBuilder,
+    APIEmbedField,
     ApplicationCommandOptionData,
     ApplicationCommandOptionType,
     ApplicationCommandType,
@@ -31,7 +32,9 @@ import {TogglePersonalInServersButtonHandler} from "../buttonCommandHandlers/Tog
 import {ChatChannelsModal} from "../modals/ChatChannelsModal";
 import {getMessageCountForUser} from "../../../core/GetMessageCountForUser";
 import {PromptPermissionsModal} from "../modals/PromptPermissionsModal";
+import {moderationResultToString, ModerationsModal} from "../modals/ModerationsModal";
 
+const CUSTOM_PROMPT_COMMAND_NAME = getEnv('CUSTOM_PROMPT_COMMAND_NAME');
 
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 if (!CONFIG_COMMAND_NAME) {
@@ -208,39 +211,80 @@ export const ConfigCommand: Command = {
         if (commandInteraction.user.id === adminPingId && !isDM && configId === mainServerId) {
             const config = await getConfig();
 
-            await commandInteraction.followUp({
-                ephemeral: true,
-                embeds: [
-                    new EmbedBuilder()
-                        .setTitle(`${client.user!.username} - BOT Config`)
-                        .setFields([
-                            {
-                                name: 'Pinecone:',
-                                value: `${config.pineconeOptions ? '✅ Enabled!' : '❌ Disabled!'}
-                            
+            const fields: APIEmbedField[] = [
+                {
+                    name: 'Pinecone:',
+                    value: `${config.pineconeOptions ? '✅ Enabled!' : '❌ Disabled!'}
+                
 Pinecone is used to have long-term memory. It stores information about all of the past messages in conversations which can then be queried.
 
 See https://openai.com/blog/new-and-improved-embedding-model/ for more information.`,
-                            },
-                            {
-                                name: 'Embed limits:',
-                                value: `${config.maxMessagesToEmbed.toString()}.
-                            
+                },
+                {
+                    name: 'Embed limits:',
+                    value: `${config.maxMessagesToEmbed.toString()}.
+                
 Embed limits are useful only for old conversations, after you have set up your Pinecone configuration.
 
 When someone sends a message to an old conversation, this many messages from the history will be stored in the long term memory all at once.
 
 As new messages are sent, they will be stored in long term memory one by one, so this value is useful only for conversations before V2. If you don't care about old conversations, set this to be 0.`,
-                            },
-                        ])
+                },
+            ];
+
+            let actionRowBuilder = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    PineconeModal.getButtonComponent(),
+                    EmbedLimitModal.getButtonComponent(),
+                );
+
+            if (CUSTOM_PROMPT_COMMAND_NAME) {
+                fields.push({
+                    name: 'Prompt Permissions:',
+                    value: `${(await Promise.all(config.promptPermissions.map(async item => {
+                        try {
+                            const user = await discordClient.users.fetch(item);
+
+                            return `(${user.tag}) <@${item}>`;
+                        } catch (e) {
+                            return `<@${item}>`;
+                        }
+                    }))).join('\n')}
+
+These people can use the /${CUSTOM_PROMPT_COMMAND_NAME} command.`,
+                });
+
+                actionRowBuilder = actionRowBuilder.addComponents(
+                    PromptPermissionsModal.getButtonComponent(),
+                );
+            }
+
+            fields.push({
+                name: 'Moderation Thresholds:',
+                value: `\`\`\`json
+${moderationResultToString(config.moderationThreshold)}.
+\`\`\`
+                
+The higher the value, the more will be allowed.
+
+For example if a message has violence rating 0.9, and the moderation threshold is 0.8, then it won't be allowed, because it's too violent.
+
+0 means allow nothing, 1 means allow everything.`,
+            });
+
+            actionRowBuilder = actionRowBuilder.addComponents(
+                ModerationsModal.getButtonComponent(),
+            );
+
+            await commandInteraction.followUp({
+                ephemeral: true,
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle(`${client.user!.username} - BOT Config`)
+                        .setFields(fields)
                 ],
                 components: [
-                    new ActionRowBuilder<ButtonBuilder>()
-                        .addComponents(
-                            PineconeModal.getButtonComponent(),
-                            EmbedLimitModal.getButtonComponent(),
-                            PromptPermissionsModal.getButtonComponent(),
-                        ),
+                    actionRowBuilder,
                 ]
             });
         }

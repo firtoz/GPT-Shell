@@ -78,8 +78,6 @@ export default (client: Client): void => {
 
         await client.application.commands.set(Commands);
 
-        logMessage('Commands:', Commands);
-
         console.log(`${client.user.username} is online`);
         logMessage('Started!');
 
