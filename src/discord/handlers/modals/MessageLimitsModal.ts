@@ -20,21 +20,31 @@ export const MessageLimitsModal = defineModal(
         label: 'Change Message Limits',
         textOnClick: 'Updating Message Limits...',
     },
-    [{
-        name: 'maxMessagePerUser',
-        label: 'Max Messages Allowed for Non-API Key Users',
-        defaultValue: '',
-        placeholder: '',
-        required: true,
-        style: TextInputStyle.Short,
-    }, {
-        name: 'exceptionRoleIds',
-        label: 'Exception Role Ids',
-        defaultValue: '',
-        placeholder: '[ID1]\n[ID2]',
-        required: false,
-        style: TextInputStyle.Paragraph,
-    }], async (interaction) => {
+    [
+        {
+            name: 'maxMessagePerUser',
+            label: 'Max Messages Allowed for Non-API Key Users',
+            defaultValue: '-1',
+            placeholder: '-1',
+            required: true,
+            style: TextInputStyle.Short,
+        },
+        {
+            name: 'maxImagePerUser',
+            label: 'Max Image Generations for Non-API Key Users',
+            defaultValue: '-1',
+            placeholder: '-1',
+            required: true,
+            style: TextInputStyle.Short,
+        },
+        {
+            name: 'exceptionRoleIds',
+            label: 'Exception Role Ids',
+            defaultValue: '',
+            placeholder: '[ID1]\n[ID2]',
+            required: false,
+            style: TextInputStyle.Paragraph,
+        }], async (interaction) => {
         const {configId} = await getConfigIdForInteraction(interaction);
         if (!configId) {
             throw new Error('No config id found for interaction...');
@@ -44,7 +54,8 @@ export const MessageLimitsModal = defineModal(
 
         return {
             maxMessagePerUser: `${config.maxMessagePerUser}`,
-            exceptionRoleIds: `${config.exceptionRoleIds.join('\n')}`
+            maxImagePerUser: `${config.maxImagePerUser}`,
+            exceptionRoleIds: `${config.exceptionRoleIds.join('\n')}`,
         };
     },
     async (values, submitInteraction) => {
@@ -56,12 +67,18 @@ export const MessageLimitsModal = defineModal(
 
             const config = await getConfigForId(configId);
 
-            const {maxMessagePerUser, exceptionRoleIds} = values;
+            const {
+                maxMessagePerUser,
+                maxImagePerUser,
+                exceptionRoleIds,
+            } = values;
 
             const maxMessagePerUserValue = parseInt(maxMessagePerUser ?? '-1');
+            const maxImagePerUserValue = parseInt(maxImagePerUser ?? '-1');
 
             if (!isNaN(maxMessagePerUserValue)) {
                 config.maxMessagePerUser = maxMessagePerUserValue < 0 ? -1 : maxMessagePerUserValue;
+                config.maxImagePerUser = maxImagePerUserValue < 0 ? -1 : maxImagePerUserValue;
                 config.exceptionRoleIds = (exceptionRoleIds ?? '')
                     .split('\n')
                     .map(item => item.trim())
@@ -69,7 +86,7 @@ export const MessageLimitsModal = defineModal(
 
                 const messageCounter = await getMessageCounter(configId);
                 for (let value of Object.values(messageCounter)) {
-                    if(value) {
+                    if (value) {
                         value.warned = false;
                     }
                 }

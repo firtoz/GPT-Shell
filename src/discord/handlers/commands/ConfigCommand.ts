@@ -134,9 +134,15 @@ If you'd like to use the server's API key, please send me the /${CONFIG_COMMAND_
 Total messages sent by all users of this server's API key: ${totalSum}.`,
             });
         } else {
+            const messageCountForUser = getMessageCountForUser(messageCounter, user.id);
+
+            logMessage('messageCountForUser', messageCountForUser);
+
             fields.push({
                 name: 'Sent Messages',
-                value: `You sent ${getMessageCountForUser(messageCounter, user.id).limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
+                value: `You sent ${messageCountForUser.limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.
+
+You generated ${messageCountForUser.imageLimitCount}/${config.maxImagePerUser === -1 ? 'Unlimited' : config.maxImagePerUser} images.
 
 Total messages sent by all users of this server's API key: ${totalSum}.`
             });
@@ -322,9 +328,13 @@ If you'd like to use the server's API key, please send me the /${CONFIG_COMMAND_
                         logMessage(`Showing config for [${isDM ? `User:${commandInteraction.user.tag}` :
                             `Server:${await getGuildName(configId)}, by User:${commandInteraction.user.tag}`}]`);
 
+                        const messageCountForUser = getMessageCountForUser(messageCounter, commandInteraction.user.id);
                         const fields = [{
                             name: 'Sent Messages',
-                            value: `You sent ${getMessageCountForUser(messageCounter, commandInteraction.user.id).limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
+                            value: `You sent ${messageCountForUser.limitCount}/${config.maxMessagePerUser === -1 ? 'Unlimited' : config.maxMessagePerUser} messages.`
+                        }, {
+                            name: 'Generated Images',
+                            value: `You generated ${messageCountForUser.imageLimitCount}/${config.maxImagePerUser === -1 ? 'Unlimited' : config.maxImagePerUser} images.`
                         }];
 
                         await commandInteraction.followUp({
