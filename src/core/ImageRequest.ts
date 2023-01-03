@@ -92,17 +92,14 @@ export class ImageRequest {
             item.discordMessageId = reply.id;
             item.channelId = reply.channelId;
 
-            // discordClient.fet
-            return item.persist();
-        }));
+            await item.persist();
 
-        for (let request of requests) {
             try {
-                request.request(openai).catch();
+                await item.request(openai);
             } catch (e) {
-                logMessage('Cannot do image request', request, e);
+                logMessage('Cannot do image request', item, e);
             }
-        }
+        }));
     }
 
     async request(openai: OpenAIApi) {
