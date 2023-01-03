@@ -69,6 +69,7 @@ export type ConfigForIdType = {
     }>;
     openAIApiKey: string | null;
     maxMessagePerUser: number;
+    maxImagePerUser: number;
     useKeyInServersToo: boolean;
     chatChannelIds: string[];
     exceptionRoleIds: string[];
@@ -87,6 +88,7 @@ const defaultConfigForId: ConfigForIdType = {
     maxMessagePerUser: -1,
     exceptionRoleIds: [],
     chatChannelIds: [],
+    maxImagePerUser: 5,
 };
 
 const serverConfigState: Record<string, ConfigForIdType | undefined> = {};
@@ -96,6 +98,8 @@ export type MessageCountInfo = {
     limitCount: number,
     warned: boolean,
     nextReset: number,
+    imageCount: number,
+    imageLimitCount: number,
 };
 export type MessageCounter = Record<string, MessageCountInfo | undefined>;
 
@@ -134,9 +138,9 @@ const getConfigForIdInternal = async (id: string) => {
     const configFromDB = await db.get<ConfigForIdType>(`BOT-CONFIG-FOR-${id}`);
     if (configFromDB) {
         return Object.assign(defaultClone, configFromDB);
-    } else {
-        await setConfigForId(id, defaultClone);
     }
+
+    await setConfigForId(id, defaultClone);
 
     return defaultClone;
 }

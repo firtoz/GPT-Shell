@@ -1,18 +1,23 @@
-import {MessageCounter} from "./config";
+import {MessageCounter, MessageCountInfo} from "./config";
 
 export function getMessageCountForUser(messageCounter: MessageCounter, userId: string) {
-    const messageCountInfo = messageCounter[userId] ?? {
+    const messageCountInfo: MessageCountInfo = messageCounter[userId] = Object.assign({
         count: 0,
         limitCount: 0,
+        imageCount: 0,
+        imageLimitCount: 0,
         warned: false,
         nextReset: getNowPlusOneMonth(),
-    };
-    if(isNaN(messageCountInfo.limitCount)) {
-        messageCountInfo.limitCount = 0;
+    }, messageCounter[userId] ?? {});
+
+    for (const key of ['limitCount', 'count', 'imageLimitCount', 'imageCount']) {
+        const value = (messageCountInfo as any)[key];
+
+        if (value === undefined || isNaN(value)) {
+            (messageCountInfo as any)[key] = 0;
+        }
     }
-    if(isNaN(messageCountInfo.count)) {
-        messageCountInfo.count = 0;
-    }
+
     return messageCountInfo;
 }
 

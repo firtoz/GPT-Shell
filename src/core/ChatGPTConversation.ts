@@ -23,7 +23,6 @@ import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
 import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
-
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
@@ -32,13 +31,18 @@ import {
     getConfig,
     getConfigForId,
     getMessageCounter,
+    MessageCounter,
     MessageCountInfo,
     saveMessageCounter
 } from "./config";
 import {getPineconeClient} from "./pinecone";
 import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
+import {extractDescriptions, ImageRequest} from "./ImageRequest";
+
 
 const adminPingId = getEnv('ADMIN_PING_ID');
+const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
+
 
 // Binary search algorithm
 function binarySearchIndex(numbers: number[], targetNumber: number): number {
@@ -306,7 +310,6 @@ export class ChatGPTConversation extends BaseConversation {
                 const data = response.data as unknown as CompletionError;
 
                 if (data.error?.type === 'insufficient_quota') {
-                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
                     onProgress(`[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.${usingOpenAIForServer ? `
 
@@ -418,8 +421,10 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
 
             if (messageCountForUser.nextReset < new Date().getTime()) {
                 messageCountForUser.limitCount = 0;
+                messageCountForUser.imageLimitCount = 0;
                 messageCountForUser.nextReset = getNowPlusOneMonth();
 
+                messageCounter[userId] = messageCountForUser;
                 await saveMessageCounter(configId, messageCounter);
             }
 
@@ -430,8 +435,6 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
                 if (!currentConfig
                     .exceptionRoleIds
                     .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
-
-                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
                     await trySendingMessage(channel, {
                         content: `Reached max limit of messages for ${user.username}.
@@ -627,25 +630,39 @@ ${failures.map(([key]) => {
 
         let promiseComplete = false;
 
+        const descriptions = await this.getImageDescriptions(inputValue, usingOpenAIForServer, userId, currentConfig, channel);
+
+        if (descriptions.length && messageToReplyTo) {
+            ImageRequest.handle(openai, descriptions, userId, messageToReplyTo).catch();
+        }
+
         const sendPromise = this.SendPromptToGPTChat(
             currentConfig,
             usingOpenAIForServer,
             openai,
             user,
             inputValue,
-            (result, finished) => {
+            async (result, finished) => {
                 if (this.customPrompt) {
-                    multi.update(`${this.username}:${result}`, finished);
+                    await multi.update(`${this.username}:${result}`, finished);
                 } else {
-                    multi.update(result, finished);
+                    await multi.update(result, finished);
                 }
 
                 if (finished) {
                     promiseComplete = true;
 
                     if (multi.messageList.length > 0) {
-                        this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id
-                        this.persist();
+                        const lastMessage = multi.messageList[multi.messageList.length - 1];
+                        this.lastDiscordMessageId = lastMessage.message.id;
+
+                        const descriptions = await this.getImageDescriptions(result, usingOpenAIForServer, userId, currentConfig, channel);
+
+                        if (descriptions.length && messageToReplyTo) {
+                            ImageRequest.handle(openai!, descriptions, userId, lastMessage.message).catch();
+                        }
+
+                        await this.persist();
                     }
                 }
             }
@@ -709,13 +726,14 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
             messageCountForUser.count++;
             messageCountForUser.limitCount++;
 
-            if (currentConfig.maxMessagePerUser !== -1 && !messageCountForUser.warned && messageCountForUser.limitCount > currentConfig.maxMessagePerUser * 0.75) {
+            if (currentConfig.maxMessagePerUser !== -1
+                && !messageCountForUser.warned
+                && messageCountForUser.limitCount > currentConfig.maxMessagePerUser * 0.75) {
                 const guild = await discordClient.guilds.fetch(this.guildId);
                 const member = await guild.members.fetch(userId);
                 if (!currentConfig
                     .exceptionRoleIds
                     .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId))) {
-                    const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
 
                     await channel.send({
                         content: '',
@@ -739,13 +757,106 @@ Thank you for your understanding.`),
             }
 
             messageCounter[userId] = messageCountForUser;
-
             await saveMessageCounter(this.guildId, messageCounter);
         }
 
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
             await this.persist();
+        }
+    }
+
+    private async getImageDescriptions(inputValue: string,
+                                       usingOpenAIForServer: boolean,
+                                       userId: string,
+                                       currentConfig: ConfigForIdType,
+                                       channel: TextBasedChannel,
+    ) {
+        let descriptions = extractDescriptions(inputValue);
+
+        if (descriptions.length === 0) {
+            return [];
+        }
+
+        const messageCounter = await getMessageCounter(this.guildId);
+
+        if (descriptions.length > 0) {
+            const userHasExceptionRole = await this.userHasExceptionRole(userId, currentConfig);
+
+            const userShouldBeRestricted = usingOpenAIForServer
+                && currentConfig.maxImagePerUser != -1
+                && userId !== adminPingId
+                && !userHasExceptionRole
+            ;
+
+            if (userShouldBeRestricted) {
+                const messageCountForUser: MessageCountInfo = getMessageCountForUser(messageCounter, userId);
+
+                if (messageCountForUser.imageLimitCount >= currentConfig.maxImagePerUser) {
+                    await channel.send({
+                        content: '',
+                        embeds: [
+                            new EmbedBuilder()
+                                .setTitle('Image Limit')
+                                .setDescription(`
+Detected [[DRAW]] commands but image limit was reached.
+                                    
+The bot has generated ${messageCountForUser.imageLimitCount} images out of the maximum allowed ${currentConfig.maxImagePerUser}.
+
+The bot will not be able to generate any more images for you in this server until the server Admin allows for more.
+
+This limit resets every month.
+                             
+If you'd like to use your own API key to generate images, you can provide your API key by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+
+You can contact a server Admin if you have any questions.
+
+Thank you for your understanding.`),
+                        ]
+                    });
+
+                    descriptions = [];
+                } else {
+                    descriptions = this.trimDescriptions(messageCounter, userId, currentConfig, descriptions);
+
+                    if (descriptions.length > 0) {
+                        messageCountForUser.imageCount += descriptions.length;
+                        messageCountForUser.imageLimitCount += descriptions.length;
+
+                        messageCounter[userId] = messageCountForUser;
+                        await saveMessageCounter(this.guildId, messageCounter);
+                    }
+                }
+            }
+        }
+        return descriptions;
+    }
+
+    private async userHasExceptionRole(userId: string, currentConfig: ConfigForIdType) {
+        const guild = await discordClient.guilds.fetch(this.guildId);
+        const member = await guild.members.fetch(userId);
+
+        return currentConfig
+            .exceptionRoleIds
+            .some(exceptionRoleId => member.roles.cache.has(exceptionRoleId));
+    }
+
+    private trimDescriptions(
+        messageCounter: MessageCounter,
+        userId: string,
+        currentConfig: ConfigForIdType,
+        descriptions: string[],
+    ) {
+        const messageCountForUser: MessageCountInfo = getMessageCountForUser(messageCounter, userId);
+        if (messageCountForUser.imageLimitCount >= currentConfig.maxImagePerUser) {
+            return [];
+        }
+        const remainingImages = Math.max(currentConfig.maxImagePerUser - messageCountForUser.imageLimitCount, 0);
+
+        if (remainingImages > 0) {
+            return descriptions.slice(0, remainingImages);
+        } else {
+            return [];
         }
     }
 
