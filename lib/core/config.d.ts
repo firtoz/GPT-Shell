@@ -18,6 +18,7 @@ export type ConfigForIdType = {
     }>;
     openAIApiKey: string | null;
     maxMessagePerUser: number;
+    maxImagePerUser: number;
     useKeyInServersToo: boolean;
     chatChannelIds: string[];
     exceptionRoleIds: string[];
@@ -27,6 +28,8 @@ export type MessageCountInfo = {
     limitCount: number;
     warned: boolean;
     nextReset: number;
+    imageCount: number;
+    imageLimitCount: number;
 };
 export type MessageCounter = Record<string, MessageCountInfo | undefined>;
 export declare const getMessageCounter: (id: string) => Promise<MessageCounter>;
