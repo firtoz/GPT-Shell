@@ -1,4 +1,4 @@
-import {Embed, EmbedBuilder, Message} from "discord.js";
+import {AttachmentBuilder, Embed, EmbedBuilder, Message} from "discord.js";
 import {discordClient} from "../discord/discordClient";
 import {CreateImageRequestSizeEnum, ImagesResponse, OpenAIApi} from "openai";
 import {v4} from "uuid";
@@ -7,10 +7,10 @@ import {AxiosResponse} from "axios";
 import {db} from "../database/db";
 
 class DiscordCachedMessage {
-    private readonly embeds: (Embed | EmbedBuilder)[];
+    // private readonly embeds: (Embed | EmbedBuilder)[];
 
     constructor(private message: Message) {
-        this.embeds = message.embeds;
+        // this.embeds = message.embeds;
     }
 
     static cache: Record<string, DiscordCachedMessage | undefined> = {};
@@ -116,11 +116,13 @@ export class ImageRequest {
         const message = await DiscordCachedMessage.get(this.channelId, this.discordMessageId);
 
         if (message) {
-            await message.setEmbed(this.embedIndex,
-                new EmbedBuilder()
-                    .setDescription(this.description)
-                    .setImage(this.result!.data[0].url!)
-            );
+            await message.update(this);
+            // await message.setEmbed(
+            //     this.embedIndex,
+            //     new EmbedBuilder()
+            //         .setDescription(this.description)
+            //         .setImage(this.result!.data[0].url!),
+            // );
         }
 
         await this.persist();
