@@ -405,7 +405,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
         let usingOpenAIForServer = false;
         let currentConfig: ConfigForIdType = await getConfigForId(userId);
 
-        if (currentConfig.useKeyInServersToo) {
+        if (this.isDirectMessage || currentConfig.useKeyInServersToo) {
             openai = await getOpenAIForId(userId);
         }
 
