@@ -34,6 +34,9 @@ export declare class ChatGPTConversation extends BaseConversation {
     private tryCreateEmbeddingForMessage;
     private SendPromptToGPTChat;
     handlePrompt(user: User, channel: TextBasedChannel, inputValue: string, messageToReplyTo?: Message<boolean>): Promise<void>;
+    private getImageDescriptions;
+    private userHasExceptionRole;
+    private trimDescriptions;
     deleteMessages(toDelete: number): Promise<string[]>;
     private tryEmbedMany;
     private testQuery;

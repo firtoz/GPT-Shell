@@ -26,6 +26,7 @@ import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
 import {PineconeMetadata} from "./PineconeMetadata";
+import * as process from "process";
 import {
     ConfigForIdType,
     getConfig,
@@ -483,6 +484,18 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
             await this.persist();
 
             return;
+        }
+
+        if (inputValue === '<CRASH>') {
+            const userHasPermissions = user.id === adminPingId;
+
+            if(userHasPermissions) {
+                if(messageToReplyTo) {
+                    this.lastDiscordMessageId = messageToReplyTo.id;
+                    await this.persist();
+                }
+                process.exit(1);
+            }
         }
 
         if (inputValue === '<DEBUG>') {

@@ -1,3 +1,3 @@
-import { MessageCounter } from "./config";
-export declare function getMessageCountForUser(messageCounter: MessageCounter, userId: string): import("./config").MessageCountInfo;
+import { MessageCounter, MessageCountInfo } from "./config";
+export declare function getMessageCountForUser(messageCounter: MessageCounter, userId: string): MessageCountInfo;
 export declare function getNowPlusOneMonth(): number;
