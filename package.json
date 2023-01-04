@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon ./src/index.ts",
     "build": "yarn rimraf ./lib/ && yarn tsc && echo build complete",
-    "start": "yarn forever --minUptime 1000 --spinSleepTime 1000 ./lib/index.js",
+    "start": "yarn exec forever --minUptime 1000 --spinSleepTime 1000 ./lib/index.js",
     "start-replit": "yarn node --version ./lib/index.js",
     "test": "vitest run",
     "vitest": "vitest"
