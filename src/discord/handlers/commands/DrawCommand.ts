@@ -5,7 +5,7 @@ import {
     ApplicationCommandType,
     Client,
     CommandInteraction,
-    EmbedBuilder
+    EmbedBuilder, PermissionFlagsBits, PermissionResolvable
 } from "discord.js";
 import {
     ConfigForIdType,
@@ -42,7 +42,45 @@ export const DrawCommand: Command | null = DRAW_COMMAND_NAME ? {
         },
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
-        if(!interaction.isChatInputCommand()) {
+        if (!interaction.isChatInputCommand()) {
+            return;
+        }
+
+        const channel = await client.channels.fetch(interaction.channelId);
+        if (!channel) {
+            await interaction.followUp({
+                ephemeral: true,
+                content: 'Cannot access channel...',
+            });
+
+            return;
+        }
+
+        try {
+            if (channel.isTextBased() && !channel.isDMBased()) {
+                const guildMember = await channel.guild.members.fetch(client.user!.id);
+
+                const permissions = channel
+                    .permissionsFor(guildMember.id)!;
+
+                const hasPermissions = permissions.has(PermissionFlagsBits.ViewChannel, false)
+                    && permissions.has(PermissionFlagsBits.SendMessages, false);
+
+                if (!hasPermissions) {
+                    await interaction.followUp({
+                        ephemeral: true,
+                        content: 'Cannot access channel...',
+                    });
+
+                    return;
+                }
+            }
+        } catch (e) {
+            await interaction.followUp({
+                ephemeral: true,
+                content: 'Cannot access channel...',
+            });
+
             return;
         }
 
