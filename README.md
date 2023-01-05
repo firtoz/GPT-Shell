@@ -79,6 +79,8 @@ Commands:
 - COMMAND_NAME: The name of the chat-gpt command
 - PRIVATE_COMMAND_NAME: Command to create private threads.
 - CONFIG_COMMAND_NAME: The name of the config command
+- CUSTOM_PROMPT_COMMAND_NAME: (Optional) The name of the command for custom prompts
+- DRAW_COMMAND_NAME: (Optional) The name of the draw command.
 
 Discord Server Details:
 - MAIN_SERVER_ID: The Discord server where the bot lives
@@ -106,6 +108,7 @@ COMMAND_NAME=chat-gpt
 PRIVATE_COMMAND_NAME=chat-gpt-private
 CONFIG_COMMAND_NAME=chat-gpt-config
 CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
+DRAW_COMMAND_NAME=chat-gpt-draw
 
 # Discord Server Details:
 MAIN_SERVER_ID=

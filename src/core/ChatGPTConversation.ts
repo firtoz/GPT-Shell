@@ -38,12 +38,10 @@ import {
 } from "./config";
 import {getPineconeClient} from "./pinecone";
 import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
-import {extractDescriptions, ImageRequest} from "./ImageRequest";
-
+import {extractDescriptions, ImageHandler} from "./ImageHandler";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
-
 
 // Binary search algorithm
 function binarySearchIndex(numbers: number[], targetNumber: number): number {
@@ -647,7 +645,7 @@ ${failures.map(([key]) => {
         const descriptions = await this.getImageDescriptions(inputValue, usingOpenAIForServer, userId, currentConfig, channel);
 
         if (descriptions.length && messageToReplyTo) {
-            ImageRequest.handle(openai, descriptions, userId, messageToReplyTo).catch();
+            ImageHandler.handle(openai, descriptions, userId, messageToReplyTo).catch();
         }
 
         const sendPromise = this.SendPromptToGPTChat(
@@ -673,7 +671,7 @@ ${failures.map(([key]) => {
                         const descriptions = await this.getImageDescriptions(result, usingOpenAIForServer, userId, currentConfig, channel);
 
                         if (descriptions.length && messageToReplyTo) {
-                            ImageRequest.handle(openai!, descriptions, userId, lastMessage.message).catch();
+                            ImageHandler.handle(openai!, descriptions, userId, lastMessage.message).catch();
                         }
 
                         await this.persist();

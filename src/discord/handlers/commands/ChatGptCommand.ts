@@ -2,11 +2,15 @@ import {
     AnyThreadChannel,
     ApplicationCommandOptionData,
     ApplicationCommandOptionType,
-    ApplicationCommandType, ChannelType,
+    ApplicationCommandType,
+    ChannelType,
     Client,
-    CommandInteraction, EmbedBuilder,
-    EmbedType, Message, TextChannel,
-    ThreadAutoArchiveDuration, ThreadChannel
+    CommandInteraction,
+    EmbedBuilder,
+    EmbedType,
+    Message,
+    TextChannel,
+    ThreadAutoArchiveDuration
 } from "discord.js";
 import {Command} from "../../Command";
 import {getEnv} from "../../../utils/GetEnv";
@@ -17,7 +21,6 @@ import {getDateString} from "../../../utils/GetDateString";
 import {ModelName} from "../../../core/ModelInfo";
 import {getOpenAIForId} from "../../../core/GetOpenAIForId";
 import {trySendingMessage} from "../../../core/TrySendingMessage";
-import {BaseConversation} from "../../../core/BaseConversation";
 import {ConversationFactory} from "../../../core/ConversationFactory";
 import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
@@ -223,6 +226,7 @@ export const ChatGptCommand: Command = {
         await handleChat(interaction, client, model);
     }
 };
+
 export const PrivateChatGptCommand: Command | null = PRIVATE_COMMAND_NAME ? {
     name: PRIVATE_COMMAND_NAME,
     dmPermission: false,
