@@ -13,6 +13,7 @@ export declare class ChatGPTConversation extends BaseConversation {
     nextEmbedCheck: number;
     customPrompt: string | null;
     temperature: number;
+    showUsername: boolean;
     summary: string;
     nextSummaryMessageCount: number;
     allowExternals: boolean;
