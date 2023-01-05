@@ -1,2 +1,1 @@
-worker: yarn start
-release: yarn
+worker: yarn && yarn start
