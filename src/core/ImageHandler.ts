@@ -5,7 +5,6 @@ import {logMessage} from "../utils/logMessage";
 import axios, {AxiosResponse} from "axios";
 import {db} from "../database/db";
 import {Stream} from "mongodb";
-import * as repl from "repl";
 
 type ImageHandlerRequestStorage = {
     id: string;
@@ -118,8 +117,6 @@ class ImageHandlerRequest {
 export class ImageHandler {
     private requests: ImageHandlerRequest[];
 
-    // private reply: Message | undefined = undefined;
-
     constructor(public openai: OpenAIApi, public storage: ImageHandlerStorage) {
         this.requests = storage.subItems.map(item => new ImageHandlerRequest(this, item));
     }
@@ -148,32 +145,6 @@ export class ImageHandler {
         await request.handle(messageToReplyTo, isCommand);
     }
 
-    // async request(openai: OpenAIApi) {
-    //     const response: AxiosResponse<ImagesResponse> = await openai.createImage({
-    //         user: this.userId,
-    //         prompt: this.description.slice(0, 1000),
-    //         n: 1,
-    //         size: this.size,
-    //     }) as any;
-    //
-    //     this.result = response.data;
-    //     this.finished = true;
-    //
-    //     const message = await DiscordCachedMessage.get(this.channelId, this.discordMessageId);
-    //
-    //     if (message) {
-    //         await message.update(this);
-    //         // await message.setEmbed(
-    //         //     this.embedIndex,
-    //         //     new EmbedBuilder()
-    //         //         .setDescription(this.description)
-    //         //         .setImage(this.result!.data[0].url!),
-    //         // );
-    //     }
-    //
-    //     await this.persist();
-    // }
-
     private persist() {
         return db.set(`IMAGE-HANDLER-${this.storage.id}`, this.storage);
     }
@@ -189,59 +160,6 @@ export class ImageHandler {
             }
         }));
     }
-
-
-    // private processorRunning = false;
-    // private updateSignalled = false;
-
-//     async signalUpdate() {
-//         this.updateSignalled = true;
-//
-//         if (!this.processorRunning) {
-//             this.processorRunning = true;
-//             while (this.updateSignalled) {
-//                 this.updateSignalled = false;
-//
-//                 try {
-//                     const reply = this.reply;
-//                     if (reply) {
-//                         const files = this.requests
-//                             .filter(item => item.attachment)
-//                             .map(item => {
-//                                 return item.attachment!;
-//                             })
-//
-//                         const embeds = this.requests.map(item => {
-//                             if (item.attachment) {
-//                                 return new EmbedBuilder()
-//                                     .setTitle('Image Prompt Finished')
-//                                     .setDescription(item.storage.description)
-//                                     .setImage(`attachment://${item.storage.id}.png`)
-//                             } else {
-//                                 return new EmbedBuilder()
-//                                     .setTitle('Image Prompt')
-//                                     .setDescription(`Generating...
-// > ${item.storage.description}`)
-//                             }
-//                         });
-//
-//                         await reply.edit({
-//                             content: '',
-//                             embeds,
-//                             files,
-//                         });
-//
-//                         await new Promise(resolve => setTimeout(resolve, 500));
-//                     }
-//
-//                     await this.persist();
-//                 } catch (e) {
-//                     logMessage(`Cannot update image handler ${this.storage.id}.`, e);
-//                 }
-//             }
-//             this.processorRunning = false;
-//         }
-//     }
 }
 
 export const extractDescriptions = (text: string): string[] => {
