@@ -33,8 +33,6 @@ class ImageHandlerRequest {
     }
 
     async start(message: Message, isCommand: boolean = false) {
-        logMessage(`Starting ${this.storage.id}`, this.storage.description);
-
         let replyPromise: Promise<Message>;
 
         if (isCommand) {
@@ -79,8 +77,6 @@ class ImageHandlerRequest {
         const response: AxiosResponse<ImagesResponse> = await responsePromise as any;
 
         this.storage.result = response.data;
-
-        logMessage(`Response ${this.storage.id}`, this.storage.result)
 
         this.storage.finished = true;
         this.storage.lastUpdated = new Date().getTime();
