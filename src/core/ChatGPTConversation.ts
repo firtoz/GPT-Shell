@@ -109,6 +109,7 @@ export class ChatGPTConversation extends BaseConversation {
     customPrompt: string | null = null;
 
     temperature: number = 0.8;
+    showUsername: boolean = true;
 
     summary: string = '';
 
@@ -656,7 +657,7 @@ ${failures.map(([key]) => {
             user,
             inputValue,
             async (result, finished) => {
-                if (this.customPrompt) {
+                if (this.customPrompt && this.showUsername) {
                     await multi.update(`${this.username}:${result}`, finished);
                 } else {
                     await multi.update(result, finished);

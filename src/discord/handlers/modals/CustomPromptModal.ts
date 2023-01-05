@@ -30,6 +30,13 @@ export const CustomPromptModal = defineModal(
         placeholder: '0 -> 1',
         required: false,
         style: TextInputStyle.Paragraph,
+    } , {
+        name: 'showUsername',
+        label: 'Show Username (true/false)',
+        defaultValue: 'true',
+        placeholder: 'true/false',
+        required: true,
+        style: TextInputStyle.Short,
     }], async (interaction) => {
         const conversation = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
 
@@ -38,6 +45,7 @@ export const CustomPromptModal = defineModal(
                 customUsername: conversation.username ?? ' ',
                 customPrompt: conversation.customPrompt ?? ' ',
                 temperature: conversation.temperature === undefined ? '0.8' : `${conversation.temperature}`,
+                showUsername: `${conversation.showUsername}`,
             };
         }
 
@@ -45,6 +53,7 @@ export const CustomPromptModal = defineModal(
             customUsername: discordClient.user!.username,
             customPrompt: ' ',
             temperature: '0.8',
+            showUsername: 'true',
         };
     },
     async (values, submitInteraction) => {
@@ -97,6 +106,8 @@ export const CustomPromptModal = defineModal(
             }
 
             conversation.temperature = Math.min(Math.max(temperature, 0), 1);
+
+            conversation.showUsername = values.showUsername !== 'false';
 
             await conversation.persist();
 
