@@ -5,8 +5,9 @@ GPT-Shell is an OpenAI based chat-bot that is similar to OpenAI's ChatGPT (https
 It allows users to converse with a virtual companion. It uses nodejs and typescript, as well as modern yarn,
 to create a seamless conversation experience.
 
-https://user-images.githubusercontent.com/108406948/207628213-c8bebc1b-ce72-45ba-907f-e0d6f51c27cd.mp4
+It can also generate images based on your conversation!
 
+https://user-images.githubusercontent.com/108406948/210852737-c1a30a08-ed0d-4cb9-9fd2-9b5376ba4233.mp4
 
 ## Try it out
 
@@ -31,11 +32,38 @@ the bot will respond.
 The bot is able to handle multiple conversations at once,
 so you can start as many conversations as you like.
 
+## Bot Setup
+Scopes:
+- bot
+- application.commands
+
+Bot Permissions:
+- read messages/view channels
+- send messages
+- create public threads
+- create private threads
+- send messages in threads
+- embed links
+- attach files
+- use slash commands
+
+You also need to enable the Message Content Intent:
+
+![image](https://user-images.githubusercontent.com/108406948/210853245-31728f5a-3017-4a26-9caa-0541b6fe1aae.png)
+
 ## Setup
 
+You can try to fork the replit:
+
+https://replit.com/@Ephemeros/GPT-Shell
+
+Or you can set it up on your machine.
+
 ### Prerequisites:
+
 Nodejs: https://nodejs.org/en/ (18 or above)
-Yarn: https://nodejs.org/en/ (after installing nodejs)
+
+Yarn: https://yarnpkg.com/getting-started/install (after installing nodejs)
 
 To use GPT-Shell, you will need to:
 - Clone the project
@@ -43,10 +71,6 @@ To use GPT-Shell, you will need to:
   - (in windows, right click somewhere in the folder and select "Open In Terminal")
   - if you see something about powershell, type `cmd` and hit enter, to go to the simpler command line terminal.
 - Run `yarn install`
-
-You can also fork the replit:
-
-https://replit.com/@Ephemeros/GPT-Shell
 
 Set up the environment variables as described below.
 
@@ -64,6 +88,36 @@ Go to your server, and type the config command, and set the API key for your ser
 ## Environment Variables
 
 The following environment variables are required for GPT-Shell to work properly.
+
+You can set the environment variables in any way you like, or place an .env.local file at the root of your project,
+next to `package.json`, that looks like this:
+<details>
+  <summary> [EXPAND] Click to see .env.local</summary>
+  
+```
+# MongoDB:
+MONGODB_URI=
+DB_NAME=
+
+# Bot Token:
+BOT_TOKEN=
+
+# Commands:
+COMMAND_NAME=chat-gpt
+PRIVATE_COMMAND_NAME=chat-gpt-private
+CONFIG_COMMAND_NAME=chat-gpt-config
+CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
+DRAW_COMMAND_NAME=draw-gpt
+
+# Discord Server Details:
+MAIN_SERVER_ID=
+LOG_CHANNEL_ID=
+MAIN_SERVER_INVITE=
+ADMIN_PING_ID=
+USE_SAME_API_KEY_FOR_ALL=false
+```
+</details>
+
 
 MongoDB:
 - MONGODB_URI: The MongoDB connection string.
@@ -91,33 +145,6 @@ Discord Server Details:
 - ADMIN_PING_ID: Bot owner's Discord id (that's you!)
   
   Used to let you send some special commands and configure the bot.
-
-You can set the environment variables in any way you like, or place an .env.local file at the root of your project,
-next to `package.json`, that looks like this:
-
-```
-# MongoDB:
-MONGODB_URI=
-DB_NAME=
-
-# Bot Token:
-BOT_TOKEN=
-
-# Commands:
-COMMAND_NAME=chat-gpt
-PRIVATE_COMMAND_NAME=chat-gpt-private
-CONFIG_COMMAND_NAME=chat-gpt-config
-CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
-DRAW_COMMAND_NAME=draw-gpt
-
-# Discord Server Details:
-MAIN_SERVER_ID=
-LOG_CHANNEL_ID=
-MAIN_SERVER_INVITE=
-ADMIN_PING_ID=
-USE_SAME_API_KEY_FOR_ALL=false
-```
-
 
 ## Long-Term Memory
 Starting from 2.0.0, the bot has the capacity to have a long-term memory.
