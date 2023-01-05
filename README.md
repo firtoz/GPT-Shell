@@ -108,7 +108,7 @@ COMMAND_NAME=chat-gpt
 PRIVATE_COMMAND_NAME=chat-gpt-private
 CONFIG_COMMAND_NAME=chat-gpt-config
 CUSTOM_PROMPT_COMMAND_NAME=chat-gpt-prompt
-DRAW_COMMAND_NAME=chat-gpt-draw
+DRAW_COMMAND_NAME=draw-gpt
 
 # Discord Server Details:
 MAIN_SERVER_ID=
