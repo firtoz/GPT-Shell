@@ -49,7 +49,12 @@ Bot Permissions:
 
 You also need to enable the Message Content Intent:
 
+<details>
+<summary>Expand to see image</summary>
+
 ![image](https://user-images.githubusercontent.com/108406948/210853245-31728f5a-3017-4a26-9caa-0541b6fe1aae.png)
+
+</details>
 
 ## Setup
 
@@ -74,7 +79,10 @@ To use GPT-Shell, you will need to:
 
 Set up the environment variables as described below.
 
-Then to start a development environment, run `yarn dev`. To build and run, run `yarn build` and then `yarn start`.
+Then to start a development environment, run `yarn dev`.
+This way, whenever you change the code, it will restart the bot to update.
+
+To build and run, run `yarn build` and then `yarn start`.
 
 Go to your server, and type the config command, and set the API key for your server using the config.
 
@@ -82,7 +90,12 @@ Go to your server, and type the config command, and set the API key for your ser
 /chat-gpt-config
 ```
 
+<details>
+<summary>Expand to see config image</summary>
+
 ![config-api-key.png](config-api-key.png)
+
+</details>
 
 
 ## Environment Variables
@@ -147,7 +160,12 @@ Discord Server Details:
   Used to let you send some special commands and configure the bot.
 
 ## Long-Term Memory
+
 Starting from 2.0.0, the bot has the capacity to have a long-term memory.
+
+<details>
+
+<summary> Expand to see how to configure long term memory. </summary>
 
 This functionality is experimental, but internal testing shows that it works quite well for typical conversation.
 
@@ -168,9 +186,14 @@ To be able to set this up, use the config command on the main server:
 
 Then enter the pinecone configuration details.
 
+You can create an account at https://app.pinecone.io/.
+
 If you did it correctly, you should see something like this:
 
 ![config-set.png](config-set.png)
+
+</details>
+
 
 ## Custom Prompts
 By default, the bot behaves like a helpful software engineer.
