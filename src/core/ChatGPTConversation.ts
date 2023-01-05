@@ -395,6 +395,10 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
         inputValue: string,
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
+        if(inputValue.match(/^\s*\[\[\s*psst\s*\]\]/i)) {
+            return;
+        }
+
         let openai: OpenAIApi | undefined;
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
@@ -703,14 +707,17 @@ ${failures.map(([key]) => {
 
         if (channel.isThread()) {
             if (this.messageHistory.length > this.nextSummaryMessageCount) {
-                const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
+                this.nextSummaryMessageCount = this.messageHistory.length + 10;
+                await this.persist();
 
                 try {
+                    const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
+
                     const response: AxiosResponse<CreateCompletionResponse> = await openai.createCompletion({
                         model: this.model,
                         prompt: `Please create a name for a discord thread that contains this conversation:
 
-${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageToPromptPart(item)).join('\n')}`,
+${getLastMessagesUntilMaxTokens(allMessagesInHistory, 500, true).map(item => messageToPromptPart(item)).join('\n')}`,
                         temperature: this.temperature,
                         max_tokens: 512,
                         top_p: 0.9,
@@ -720,8 +727,6 @@ ${getLastMessagesUntilMaxTokens(allMessagesInHistory, 1500).map(item => messageT
                     }) as any;
 
                     this.summary = response.data.choices[0].text!;
-                    this.nextSummaryMessageCount = this.messageHistory.length + 10;
-                    await this.persist();
 
                     await channel.setName(this.summary.slice(0, 90));
                 } catch (e) {

@@ -163,7 +163,7 @@ Total messages sent by all users of this server's API key: ${totalSum}.`
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId(TogglePersonalInServersButtonHandler.id)
-                    .setLabel(config.useKeyInServersToo ? 'Stop using API key on all servers' : 'Use API key on all servers')
+                    .setLabel(config.useKeyInServersToo ? 'Use my API key for DMs only' : 'Use my API key for server conversations')
                     .setStyle(config.useKeyInServersToo ? ButtonStyle.Danger : ButtonStyle.Primary),
             );
     }
