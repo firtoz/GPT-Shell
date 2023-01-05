@@ -163,11 +163,11 @@ export class ImageHandler {
 }
 
 export const extractDescriptions = (text: string): string[] => {
-    const pattern = /\[\[(?:DRAW|IMAGE)\|(.+?)\]\]/g;
+    const pattern = /\[\[\s*(?:DRAW|IMAGE)\s*\|(.+?)\]\]/gi;
     const matches = text.match(pattern);
     if (!matches) {
         return [];
     }
 
-    return matches.map((match) => match.replace(pattern, '$1'));
+    return matches.map((match) => match.replace(pattern, '$1').trim());
 }
