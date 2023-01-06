@@ -45,7 +45,7 @@ export const getPineconeClient: () => Promise<PineconeClient<PineconeMetadata> |
             pineconeClientCache = testClient;
             logMessage('Successfully created pinecone client!');
         } catch (e) {
-            logMessage('Cannot create pinecone client...');
+            logMessage('Cannot create pinecone client...', e);
             pineconeClientCache = null;
         }
     } else {
@@ -77,6 +77,8 @@ export const trySavingPineconeOptions = async (options: PineconeConfigOpts | nul
         const config = await getConfig();
         config.pineconeOptions = options;
         await setConfig(config);
+
+        logMessage('Successfully created pinecone client!');
 
         return {
             success: true,

@@ -8,6 +8,7 @@ import {getEnv} from "../../utils/GetEnv";
 import {ConfigType, getConfig, getConfigForId, ConfigForIdType} from "../../core/config";
 import {mainServerId} from "../../core/MainServerId";
 import {getOpenAIForId} from "../../core/GetOpenAIForId";
+import {getPineconeClient} from "../../core/pinecone";
 
 
 async function checkUsage(config: ConfigForIdType) {
@@ -106,6 +107,8 @@ export default (client: Client): void => {
         logMessage(`Openai connection: ${openaiSuccess ? 'good' : 'bad'}!`);
 
         // await checkUsage(config);
+
+        await getPineconeClient();
 
         StartListeningToMessages(client);
         InitializeThreads();
