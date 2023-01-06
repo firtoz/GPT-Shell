@@ -43,6 +43,7 @@ export const getPineconeClient: () => Promise<PineconeClient<PineconeMetadata> |
             await testClient.describeIndexStats();
 
             pineconeClientCache = testClient;
+            logMessage('Successfully created pinecone client!');
         } catch (e) {
             logMessage('Cannot create pinecone client...');
             pineconeClientCache = null;
