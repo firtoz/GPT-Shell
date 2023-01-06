@@ -1367,7 +1367,8 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
                     $or: [
                         {
                             "value.lastUpdated": {
-                                $gt: new Date().getTime() - 86400000,
+                                // check last hour. if we crash for longer than an hour, ignore
+                                $gt: new Date().getTime() - 3600000,
                             }
                         },
                         {
