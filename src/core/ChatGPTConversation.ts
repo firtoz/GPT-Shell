@@ -1,6 +1,6 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {AnyThreadChannel, EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {
     CreateCompletionResponse,
@@ -395,7 +395,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
         inputValue: string,
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
-        if(inputValue.match(/^\s*\[\[\s*psst\s*\]\]/i)) {
+        if (inputValue.match(/^\s*\[\[\s*psst\s*\]\]/i)) {
             return;
         }
 
@@ -492,8 +492,8 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
         if (inputValue === '<CRASH>') {
             const userHasPermissions = user.id === adminPingId;
 
-            if(userHasPermissions) {
-                if(messageToReplyTo) {
+            if (userHasPermissions) {
+                if (messageToReplyTo) {
                     this.lastDiscordMessageId = messageToReplyTo.id;
                     await this.persist();
                 }
@@ -509,7 +509,11 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
                 const {lastUpdated, nextSummaryMessageCount} = this;
                 const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
                 const numMessages = this.messageHistory.length;
-                const debugInfo = {lastUpdated, numMessages, totalTokens, nextSummaryMessageCount};
+                const debugInfo = {lastUpdated, numMessages, totalTokens} as any;
+
+                if (channel.isThread()) {
+                    debugInfo.nextSummaryMessageCount = nextSummaryMessageCount;
+                }
                 const debugMessage = `Debug: 
 \`\`\`json
 ${JSON.stringify(debugInfo, null, '  ')}
@@ -707,31 +711,7 @@ ${failures.map(([key]) => {
 
         if (channel.isThread()) {
             if (this.messageHistory.length > this.nextSummaryMessageCount) {
-                this.nextSummaryMessageCount = this.messageHistory.length + 10;
-                await this.persist();
-
-                try {
-                    const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
-
-                    const response: AxiosResponse<CreateCompletionResponse> = await openai.createCompletion({
-                        model: this.model,
-                        prompt: `Please create a name for a discord thread that contains this conversation:
-
-${getLastMessagesUntilMaxTokens(allMessagesInHistory, 500, true).map(item => messageToPromptPart(item)).join('\n')}`,
-                        temperature: this.temperature,
-                        max_tokens: 512,
-                        top_p: 0.9,
-                        frequency_penalty: 0,
-                        presence_penalty: 0,
-                        user: userId,
-                    }) as any;
-
-                    this.summary = response.data.choices[0].text!;
-
-                    await channel.setName(this.summary.slice(0, 90));
-                } catch (e) {
-                    logMessage(`Could not name thread ${await this.getLinkableId()}`, e);
-                }
+                await this.trySummariseThread(openai, userId, channel);
             }
         }
 
@@ -780,6 +760,43 @@ Thank you for your understanding.`),
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
             await this.persist();
+        }
+    }
+
+    private async trySummariseThread(openai: OpenAIApi, userId: string, channel: AnyThreadChannel) {
+        try {
+            const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
+
+            const lastMessages = getLastMessagesUntilMaxTokens(allMessagesInHistory, 1000, true);
+
+            if (lastMessages.length < 4) {
+                return;
+            }
+
+            this.nextSummaryMessageCount = this.messageHistory.length + 10;
+            await this.persist();
+
+            const response: AxiosResponse<CreateCompletionResponse> = await openai.createCompletion({
+                model: this.model,
+                prompt: `Please create a name for a discord thread that contains this conversation:
+
+${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`,
+                temperature: this.temperature,
+                max_tokens: 512,
+                top_p: 0.9,
+                frequency_penalty: 0,
+                presence_penalty: 0,
+                user: userId,
+            }) as any;
+
+            this.summary = response.data.choices[0].text!;
+
+            logMessage(`Summary for ${await this.getLinkableId()}: ${this.summary}.
+Source: ${lastMessages}`);
+
+            await channel.setName(this.summary.slice(0, 90));
+        } catch (e) {
+            logMessage(`Could not name thread ${await this.getLinkableId()}`, e);
         }
     }
 
