@@ -38,6 +38,14 @@ export const MessageLimitsModal = defineModal(
             style: TextInputStyle.Short,
         },
         {
+            name: 'messageExpiredNote',
+            label: 'Additional Note For users',
+            defaultValue: '',
+            placeholder: 'Please donate via <#1052219713297584158> to get access to unlimited messages.',
+            required: false,
+            style: TextInputStyle.Short,
+        },
+        {
             name: 'exceptionRoleIds',
             label: 'Exception Role Ids',
             defaultValue: '',
@@ -56,6 +64,7 @@ export const MessageLimitsModal = defineModal(
             maxMessagePerUser: `${config.maxMessagePerUser}`,
             maxImagePerUser: `${config.maxImagePerUser}`,
             exceptionRoleIds: `${config.exceptionRoleIds.join('\n')}`,
+            messageExpiredNote: config.messageExpiredNote,
         };
     },
     async (values, submitInteraction) => {
@@ -71,6 +80,7 @@ export const MessageLimitsModal = defineModal(
                 maxMessagePerUser,
                 maxImagePerUser,
                 exceptionRoleIds,
+                messageExpiredNote,
             } = values;
 
             const maxMessagePerUserValue = parseInt(maxMessagePerUser ?? '-1');
@@ -79,6 +89,7 @@ export const MessageLimitsModal = defineModal(
             if (!isNaN(maxMessagePerUserValue)) {
                 config.maxMessagePerUser = maxMessagePerUserValue < 0 ? -1 : maxMessagePerUserValue;
                 config.maxImagePerUser = maxImagePerUserValue < 0 ? -1 : maxImagePerUserValue;
+                config.messageExpiredNote = messageExpiredNote ?? '';
                 config.exceptionRoleIds = (exceptionRoleIds ?? '')
                     .split('\n')
                     .map(item => item.trim())

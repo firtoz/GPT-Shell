@@ -395,7 +395,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
         inputValue: string,
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
-        if (inputValue.match(/^\s*\[\[\s*psst\s*\]\]/i)) {
+        if (inputValue.match(/^\s*\[\[\s*ps+t\s*\]\]/i)) {
             return;
         }
 
@@ -443,7 +443,9 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
                     await trySendingMessage(channel, {
                         content: `Reached max limit of messages for ${user.username}.
                         
-Please contact a server admin to get access for unlimited messages.
+${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}
+
+` : ''}Please contact a server admin to get access for unlimited messages.
 
 Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
                     }, messageToReplyTo);
@@ -469,9 +471,24 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
         }
 
 
-        if (inputValue === '<EMBED>' && userId === adminPingId) {
-            await this.tryEmbedMany(user, openai, channel, messageToReplyTo);
-            return;
+        if (userId === adminPingId) {
+            if (inputValue === '<EMBED>') {
+                await this.tryEmbedMany(user, openai, channel, messageToReplyTo);
+                return;
+            }
+
+            if (inputValue === '<TEST_MSG_LIMIT>') {
+                await trySendingMessage(channel, {
+                    content: `Reached max limit of messages for ${user.username}.
+                        
+${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}
+
+` : ''}Please contact a server admin to get access for unlimited messages.
+
+Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
+                }, messageToReplyTo);
+                return;
+            }
         }
 
         const botConfig = await getConfig();
@@ -741,7 +758,9 @@ ${failures.map(([key]) => {
                              
 When you reach ${currentConfig.maxMessagePerUser}, you won't be able to send any more messages until an Admin allows it, or until you provide your own API key to me.
 
-You can provide your API key by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
+${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}
+
+` : ''}You can provide your API key by using \`/${CONFIG_COMMAND_NAME}\` in a DM to me.
  
 Please be aware of this and contact an Admin if you have any questions.
 

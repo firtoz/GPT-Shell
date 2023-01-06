@@ -69,6 +69,7 @@ export type ConfigForIdType = {
     }>;
     openAIApiKey: string | null;
     maxMessagePerUser: number;
+    messageExpiredNote: string;
     maxImagePerUser: number;
     useKeyInServersToo: boolean;
     chatChannelIds: string[];
@@ -89,6 +90,7 @@ const defaultConfigForId: ConfigForIdType = {
     exceptionRoleIds: [],
     chatChannelIds: [],
     maxImagePerUser: 5,
+    messageExpiredNote: '',
 };
 
 const serverConfigState: Record<string, ConfigForIdType | undefined> = {};
