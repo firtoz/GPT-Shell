@@ -264,6 +264,8 @@ export class ChatGPTConversation extends BaseConversation {
         const modelInfo = config.modelInfo[this.model];
 
         let finished = false;
+        let numRetries = 0;
+        const maxRetries = 3;
         let latestResponseText = '';
 
         const relevancyResultsCache: RelevancyCheckCache = {
@@ -315,6 +317,15 @@ export class ChatGPTConversation extends BaseConversation {
 
 You can alternatively supply your own API key to me by sending me the /${CONFIG_COMMAND_NAME} command in a DM.` : ''}]]`, true);
                 } else if (data.error?.message) {
+                    logMessage('Bad response', response.data, {numRetries, maxRetries});
+
+                    if (data.error.message.includes('currently overloaded')) {
+                        if (numRetries < maxRetries) {
+                            numRetries++;
+                            continue;
+                        }
+                    }
+
                     onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
                 } else {
                     onProgress('[[Unknown error from OpenAI servers. Please ping the bot owner for help.]]', true);
