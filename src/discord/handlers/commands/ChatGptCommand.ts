@@ -198,6 +198,7 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
     if (existingConvo && existingConvo.version == ChatGPTConversation.latestVersion) {
         conversation.username = existingConvo.username;
         conversation.customPrompt = existingConvo.customPrompt;
+        conversation.temperature = existingConvo.temperature;
     }
 
     await conversation.persist();
