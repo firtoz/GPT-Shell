@@ -481,9 +481,8 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
                 await trySendingMessage(channel, {
                     content: `Reached max limit of messages for ${user.username}.
                         
-${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}
-
-` : ''}Please contact a server admin to get access for unlimited messages.
+${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}`
+                        : 'Please contact a server admin to get access for unlimited messages.'}
 
 Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
                 }, messageToReplyTo);

@@ -41,7 +41,7 @@ export const MessageLimitsModal = defineModal(
             name: 'messageExpiredNote',
             label: 'Additional Note For users',
             defaultValue: '',
-            placeholder: 'Please donate via <#1052219713297584158> to get access to unlimited messages.',
+            placeholder: 'Please contact a server admin to get access for unlimited messages.',
             required: false,
             style: TextInputStyle.Short,
         },
