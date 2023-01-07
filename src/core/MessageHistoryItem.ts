@@ -1,10 +1,11 @@
-import {CreateEmbeddingResponseDataInner} from "openai";
+import {CreateCompletionResponseUsage, CreateEmbeddingResponseDataInner} from "openai";
 
 export type MessageHistoryItem = ({
     type: 'human';
     userId: string;
 } | {
     type: 'response';
+    usageInfo?: CreateCompletionResponseUsage[];
 }) & {
     id: string;
     timestamp: number | undefined;

@@ -3,7 +3,7 @@ import {MultiMessage} from "../shared/MultiMessage";
 import {AnyThreadChannel, EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {
-    CreateCompletionResponse,
+    CreateCompletionResponse, CreateCompletionResponseUsage,
     CreateEmbeddingResponse,
     CreateModerationResponse,
     CreateModerationResponseResultsInnerCategoryScores,
@@ -187,7 +187,13 @@ export class ChatGPTConversation extends BaseConversation {
         return newMessageItem;
     }
 
-    async createResponseMessage(openai: OpenAIApi, botUsername: string, user: User, message: string) {
+    async createResponseMessage(
+        openai: OpenAIApi,
+        botUsername: string,
+        user: User,
+        message: string,
+        usageInfo: CreateCompletionResponseUsage[],
+    ) {
         const messageId = v4();
         const timestamp = new Date().getTime();
 
@@ -201,6 +207,7 @@ export class ChatGPTConversation extends BaseConversation {
             type: 'response',
             username: botUsername,
             timestamp: new Date().getTime(),
+            usageInfo,
         };
 
         newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
@@ -267,6 +274,7 @@ export class ChatGPTConversation extends BaseConversation {
         let numRetries = 0;
         const maxRetries = 3;
         let latestResponseText = '';
+        let usageInfo: CreateCompletionResponseUsage[] = [];
 
         const relevancyResultsCache: RelevancyCheckCache = {
             searchPerformed: false,
@@ -356,6 +364,10 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
             }
 
             latestResponseText += text;
+            const currentUsage = response.data.usage;
+            if (currentUsage) {
+                usageInfo.push(currentUsage);
+            }
 
             if (choice.finish_reason !== 'stop') {
                 if (onProgress) {
@@ -378,7 +390,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
                     inputMessageItem.id,
                 );
 
-                const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, latestResponseText);
+                const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, latestResponseText, usageInfo);
 
                 inputMessageItem.embedding = await embeddingPromise;
                 const responseMessage = await createResponseMessagePromise;
@@ -534,9 +546,32 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
 
             if (userOrServerHasPermissions) {
                 const {lastUpdated, nextSummaryMessageCount} = this;
-                const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id]).reduce((sum, item) => sum + item.numTokens, 0);
+                const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id])
+                    .reduce((sum, item) => sum + item.numTokens, 0);
+                const responseTokens: CreateCompletionResponseUsage = this.messageHistory.map(id => this.messageHistoryMap[id])
+                    .reduce((sum, item) => {
+                        if(item.type === 'response') {
+                            if(item.usageInfo) {
+                                for (let usage of item.usageInfo) {
+                                    sum.completion_tokens += usage.completion_tokens;
+                                    sum.prompt_tokens += usage.prompt_tokens;
+                                    sum.total_tokens += usage.total_tokens;
+                                }
+                            }
+                        }
+                        return sum;
+                    }, {
+                        prompt_tokens: 0,
+                        completion_tokens: 0,
+                        total_tokens: 0,
+                    });
                 const numMessages = this.messageHistory.length;
-                const debugInfo = {lastUpdated, numMessages, totalTokens} as any;
+                const debugInfo = {
+                    lastUpdated,
+                    numMessages,
+                    totalTokens,
+                    responseTokens,
+                } as any;
 
                 if (channel.isThread()) {
                     debugInfo.nextSummaryMessageCount = nextSummaryMessageCount;
