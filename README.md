@@ -110,9 +110,9 @@ next to `package.json`, that looks like this:
 ```
 # MongoDB:
 MONGODB_URI=
-DB_NAME=
+DB_NAME=CHAT_DB
 
-# Bot Token:
+# Bot Token from Discord:
 BOT_TOKEN=
 
 # Commands:
