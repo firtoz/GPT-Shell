@@ -1,5 +1,5 @@
 import { Message, TextBasedChannel, User } from "discord.js";
-import { OpenAIApi } from 'openai';
+import { CreateCompletionResponseUsage, OpenAIApi } from 'openai';
 import { ModelName } from "./ModelInfo";
 import { BaseConversation } from "./BaseConversation";
 import { MessageHistoryItem } from "./MessageHistoryItem";
@@ -22,8 +22,9 @@ export declare class ChatGPTConversation extends BaseConversation {
     constructor(threadId: string, creatorId: string, guildId: string, username: string, model: ModelName);
     static handleRetrievalFromDB(fromDb: ChatGPTConversation): Promise<ChatGPTConversation>;
     createHumanMessage(openai: OpenAIApi, user: User, message: string): Promise<MessageHistoryItem>;
-    createResponseMessage(openai: OpenAIApi, botUsername: string, user: User, message: string): Promise<{
+    createResponseMessage(openai: OpenAIApi, botUsername: string, user: User, message: string, usageInfo: CreateCompletionResponseUsage[]): Promise<{
         type: "response";
+        usageInfo?: CreateCompletionResponseUsage[] | undefined;
     } & {
         id: string;
         timestamp: number | undefined;
@@ -35,6 +36,7 @@ export declare class ChatGPTConversation extends BaseConversation {
     private tryCreateEmbeddingForMessage;
     private SendPromptToGPTChat;
     handlePrompt(user: User, channel: TextBasedChannel, inputValue: string, messageToReplyTo?: Message<boolean>): Promise<void>;
+    private trySummariseThread;
     private getImageDescriptions;
     private userHasExceptionRole;
     private trimDescriptions;

@@ -43,12 +43,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
-            ["pinecone-client", "npm:1.0.0"],\
+            ["pinecone-client", "npm:1.0.1"],\
             ["pnpapi", "npm:0.0.0"],\
             ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
-            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
             ["ts-toolbelt", "npm:9.6.0"],\
             ["tsc", "npm:2.0.4"],\
             ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"],\
@@ -3241,12 +3240,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["mongodb", "npm:4.12.1"],\
             ["nodemon", "npm:2.0.20"],\
             ["openai", "npm:3.1.0"],\
-            ["pinecone-client", "npm:1.0.0"],\
+            ["pinecone-client", "npm:1.0.1"],\
             ["pnpapi", "npm:0.0.0"],\
             ["rimraf", "npm:3.0.2"],\
             ["ts-node", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:10.9.1"],\
             ["ts-node-dev", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.0.0"],\
-            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
             ["ts-toolbelt", "npm:9.6.0"],\
             ["tsc", "npm:2.0.4"],\
             ["typescript", "patch:typescript@npm%3A4.9.3#~builtin<compat/typescript>::version=4.9.3&hash=d73830"],\
@@ -3983,10 +3981,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["ky", [\
-        ["npm:0.32.2", {\
-          "packageLocation": "./.yarn/cache/ky-npm-0.32.2-8f58ebc4ab-0ca78c4fe7.zip/node_modules/ky/",\
+        ["npm:0.33.1", {\
+          "packageLocation": "./.yarn/cache/ky-npm-0.33.1-ea80c7754f-47a4b74fd6.zip/node_modules/ky/",\
           "packageDependencies": [\
-            ["ky", "npm:0.32.2"]\
+            ["ky", "npm:0.33.1"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -4794,11 +4792,11 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
         }]\
       ]],\
       ["pinecone-client", [\
-        ["npm:1.0.0", {\
-          "packageLocation": "./.yarn/cache/pinecone-client-npm-1.0.0-33410ba2d3-07fd4e2126.zip/node_modules/pinecone-client/",\
+        ["npm:1.0.1", {\
+          "packageLocation": "./.yarn/cache/pinecone-client-npm-1.0.1-0cf4844048-ec7cc0f3a2.zip/node_modules/pinecone-client/",\
           "packageDependencies": [\
-            ["pinecone-client", "npm:1.0.0"],\
-            ["ky", "npm:0.32.2"]\
+            ["pinecone-client", "npm:1.0.1"],\
+            ["ky", "npm:0.33.1"]\
           ],\
           "linkType": "HARD"\
         }]\
@@ -5869,28 +5867,6 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             "@types/typescript",\
             "node-notifier",\
             "typescript"\
-          ],\
-          "linkType": "HARD"\
-        }]\
-      ]],\
-      ["ts-pegjs", [\
-        ["npm:2.1.0", {\
-          "packageLocation": "./.yarn/cache/ts-pegjs-npm-2.1.0-a5ec3cac92-c726a086cb.zip/node_modules/ts-pegjs/",\
-          "packageDependencies": [\
-            ["ts-pegjs", "npm:2.1.0"]\
-          ],\
-          "linkType": "SOFT"\
-        }],\
-        ["virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0", {\
-          "packageLocation": "./.yarn/__virtual__/ts-pegjs-virtual-aef9766976/0/cache/ts-pegjs-npm-2.1.0-a5ec3cac92-c726a086cb.zip/node_modules/ts-pegjs/",\
-          "packageDependencies": [\
-            ["ts-pegjs", "virtual:80bc73d863bc0cdb1acbc60461dfd8155e14b04887cd2fe06b4fabdac31938510712e3e3d7757bf2527f26af6db025f97723e22c6352c27b2a2e7eb2b2f26472#npm:2.1.0"],\
-            ["@types/peggy", null],\
-            ["peggy", null]\
-          ],\
-          "packagePeers": [\
-            "@types/peggy",\
-            "peggy"\
           ],\
           "linkType": "HARD"\
         }]\

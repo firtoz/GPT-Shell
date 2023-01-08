@@ -18,6 +18,7 @@ export type ConfigForIdType = {
     }>;
     openAIApiKey: string | null;
     maxMessagePerUser: number;
+    messageExpiredNote: string;
     maxImagePerUser: number;
     useKeyInServersToo: boolean;
     chatChannelIds: string[];

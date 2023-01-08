@@ -2874,12 +2874,11 @@ __metadata:
     mongodb: ^4.12.1
     nodemon: ^2.0.20
     openai: ^3.1.0
-    pinecone-client: ^1.0.0
+    pinecone-client: ^1.0.1
     pnpapi: ^0.0.0
     rimraf: ^3.0.2
     ts-node: ^10.9.1
     ts-node-dev: ^2.0.0
-    ts-pegjs: ^2.1.0
     ts-toolbelt: ^9.6.0
     tsc: ^2.0.4
     typescript: 4.9.3
@@ -3527,10 +3526,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ky@npm:^0.32.2":
-  version: 0.32.2
-  resolution: "ky@npm:0.32.2"
-  checksum: 0ca78c4fe7b143ad527c6f79e3f77b529a55d5efe7c4a400e5937ddce641f4b672d77fd18e59b59573c77df48ba71095823a0da4c7701515d4333376f06a62d9
+"ky@npm:^0.33.1":
+  version: 0.33.1
+  resolution: "ky@npm:0.33.1"
+  checksum: 47a4b74fd6cb4b80b4fbff1d5500d082e2f437955a3abea70690fa4f080910e4e035e10e1b91f695479e99fe3e95a8e32daa1a7e4e9364386bd562a3d4cff21f
   languageName: node
   linkType: hard
 
@@ -4264,12 +4263,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pinecone-client@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "pinecone-client@npm:1.0.0"
+"pinecone-client@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "pinecone-client@npm:1.0.1"
   dependencies:
-    ky: ^0.32.2
-  checksum: 07fd4e2126128d766fc1aa1d996f63273a5c35880a20e9a2e5317c71a2230cd02e96aaa6e7db86041103f605cd916179cb5397899de74f53416f1ba5781f0058
+    ky: ^0.33.1
+  checksum: ec7cc0f3a2a9f580d1dcb5229b86ee9c120d322b48dd37311875f8a3872128a7999e0bc9af2969d457fd52098c9ec9ca231bd73a9bc08a4b40eefd1f94333fef
   languageName: node
   linkType: hard
 
@@ -5227,17 +5226,6 @@ __metadata:
     ts-node-transpile-only: dist/bin-transpile.js
     ts-script: dist/bin-script-deprecated.js
   checksum: 090adff1302ab20bd3486e6b4799e90f97726ed39e02b39e566f8ab674fd5bd5f727f43615debbfc580d33c6d9d1c6b1b3ce7d8e3cca3e20530a145ffa232c35
-  languageName: node
-  linkType: hard
-
-"ts-pegjs@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "ts-pegjs@npm:2.1.0"
-  peerDependencies:
-    peggy: ^2.0.1
-  bin:
-    tspegjs: src/cli.js
-  checksum: c726a086cba264e0c607a661a64fa5f9dd721d7779f44525d82f1536e6fdac6f70f866a347b858a41a28d2d2db8043d8751f4427b1cbabff0d5e74ede0d9fc95
   languageName: node
   linkType: hard
 

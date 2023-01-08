@@ -29,7 +29,6 @@
     "rimraf": "^3.0.2",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "ts-pegjs": "^2.1.0",
     "typescript": "4.9.3",
     "vite": "^4.0.0",
     "vitest": "^0.25.7"
@@ -45,7 +44,7 @@
     "lodash": "^4.17.21",
     "mongodb": "^4.12.1",
     "openai": "^3.1.0",
-    "pinecone-client": "^1.0.0",
+    "pinecone-client": "^1.0.1",
     "pnpapi": "^0.0.0",
     "ts-toolbelt": "^9.6.0",
     "tsc": "^2.0.4",
