@@ -4,11 +4,11 @@ import {getEnv} from "../utils/GetEnv";
 const MONGODB_URI = getEnv('MONGODB_URI');
 const DB_NAME = getEnv('DB_NAME');
 
-type KeyValuePair = { key: string, value: any };
+export type KeyValuePair<T = any> = { key: string, value: T };
 
 export class KeyValueDB {
     private readonly client: MongoClient | null = null;
-    private collection: Collection<KeyValuePair> | null = null;
+    public collection: Collection<KeyValuePair> | null = null;
 
     constructor() {
         if (MONGODB_URI == null || DB_NAME == null) {

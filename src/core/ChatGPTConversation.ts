@@ -39,6 +39,7 @@ import {
 import {getPineconeClient} from "./pinecone";
 import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
 import {extractDescriptions, ImageHandler} from "./ImageHandler";
+import {KeyValuePair} from "../database/mongodb";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -523,21 +524,72 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
             }
 
             if (inputValue === '<SERVERINFO>') {
-                const guilds = await discordClient.guilds.fetch();
+                try {
+                    const guilds = await discordClient.guilds.fetch();
 
-                const string = (await Promise.all(guilds.map(async guild => {
-                    const guildInfo = await getConfigForId(guild.id);
+                    const guildInfo = await Promise.all(guilds.map(async guild => {
+                        try {
+                            const guildInfo = await getConfigForId(guild.id);
 
-                    const hasAPIKey = Boolean(guildInfo && guildInfo.openAIApiKey);
+                            const hasAPIKey = Boolean(guildInfo && guildInfo.openAIApiKey);
 
-                    return `${guild.id}: ${guild.name}: Has API key: ${hasAPIKey}.`;
-                }))).join('\n');
+                            const threads: KeyValuePair<ChatGPTConversation>[] = await db.collection!.find({
+                                "value.guildId": guild.id,
+                            }).toArray();
 
-                await this.sendReply(channel, `Guilds:
+                            const guildObject = await discordClient.guilds.cache.get(guild.id);
+                            const member = await guildObject?.members.fetch(discordClient.user!.id);
+                            let joined: Date | null = null;
+
+                            if (member) {
+                                joined = member.joinedAt;
+                            }
+
+                            return {
+                                id: guild.id,
+                                name: guild.name,
+                                success: true,
+                                'hasAPI': hasAPIKey,
+                                numThreads: threads.length,
+                                numLastVersionThreads: threads.filter(thread => thread.value.version === ChatGPTConversation.latestVersion).length,
+                                numMessages: threads.reduce((sum, thread) => {
+                                    if (thread.value.version === ChatGPTConversation.latestVersion) {
+                                        return sum + thread.value.messageHistory.length;
+                                    }
+
+                                    return sum;
+                                }, 0),
+                                joined,
+                            };
+                        } catch (e) {
+                            return {
+                                success: false,
+                                error: e,
+                            };
+                        }
+                    }));
+
+                    const string = guildInfo.sort((a, b) => {
+                        if(!a.success || !a.joined) {
+                            return -1;
+                        }
+                        if(!b.success || !b.joined) {
+                            return 1;
+                        }
+
+                        return a.joined.getTime() - b.joined.getTime();
+                    }).map(info => {
+                        return `${info.id}: ${info.name}: ${JSON.stringify(info)}`;
+                    }).join('\n');
+
+                    await this.sendReply(channel, `Guilds:
 \`\`\`
 ${string}
 \`\`\``);
 
+                } catch (e) {
+                    logMessage('Cannot get serverinfo: ', e);
+                }
                 return;
             }
         }
