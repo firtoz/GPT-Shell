@@ -511,6 +511,35 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
                 }, messageToReplyTo);
                 return;
             }
+
+            if (inputValue === '<CRASH>') {
+                const userHasPermissions = user.id === adminPingId;
+
+                if (messageToReplyTo) {
+                    this.lastDiscordMessageId = messageToReplyTo.id;
+                    await this.persist();
+                }
+                process.exit(1);
+            }
+
+            if (inputValue === '<SERVERINFO>') {
+                const guilds = await discordClient.guilds.fetch();
+
+                const string = (await Promise.all(guilds.map(async guild => {
+                    const guildInfo = await getConfigForId(guild.id);
+
+                    const hasAPIKey = Boolean(guildInfo && guildInfo.openAIApiKey);
+
+                    return `${guild.id}: ${guild.name}: Has API key: ${hasAPIKey}.`;
+                }))).join('\n');
+
+                await this.sendReply(channel, `Guilds:
+\`\`\`
+${string}
+\`\`\``);
+
+                return;
+            }
         }
 
         const botConfig = await getConfig();
@@ -526,18 +555,6 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
             await this.persist();
 
             return;
-        }
-
-        if (inputValue === '<CRASH>') {
-            const userHasPermissions = user.id === adminPingId;
-
-            if (userHasPermissions) {
-                if (messageToReplyTo) {
-                    this.lastDiscordMessageId = messageToReplyTo.id;
-                    await this.persist();
-                }
-                process.exit(1);
-            }
         }
 
         if (inputValue === '<DEBUG>') {
