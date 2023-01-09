@@ -211,9 +211,9 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
             thread,
             inputValue
         );
-    } else {
-        await trySendingMessage(thread, {content: `[[<@${userId}>, ${conversation.username} will respond to your messages in this thread.]]`}, undefined);
     }
+
+    await trySendingMessage(thread, {content: `[[<@${userId}>, ${conversation.username} will respond to your messages in this thread.]]`}, undefined);
 }
 
 export const ChatGptCommand: Command = {
