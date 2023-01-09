@@ -466,9 +466,9 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
                     await trySendingMessage(channel, {
                         content: `Reached max limit of messages for ${user.username}.
                         
-${currentConfig.messageExpiredNote ? `${currentConfig.messageExpiredNote}
-
-` : ''}Please contact a server admin to get access for unlimited messages.
+${currentConfig.messageExpiredNote ?
+                            `${currentConfig.messageExpiredNote}` :
+                            'Please contact a server admin to get access for unlimited messages.'}
 
 Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG_COMMAND_NAME}\` in a DM to me.`
                     }, messageToReplyTo);
@@ -550,8 +550,8 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
                     .reduce((sum, item) => sum + item.numTokens, 0);
                 const responseTokens: CreateCompletionResponseUsage = this.messageHistory.map(id => this.messageHistoryMap[id])
                     .reduce((sum, item) => {
-                        if(item.type === 'response') {
-                            if(item.usageInfo) {
+                        if (item.type === 'response') {
+                            if (item.usageInfo) {
                                 for (let usage of item.usageInfo) {
                                     sum.completion_tokens += usage.completion_tokens;
                                     sum.prompt_tokens += usage.prompt_tokens;
