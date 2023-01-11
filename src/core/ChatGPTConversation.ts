@@ -21,7 +21,7 @@ import {getCustomPrompt, getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
 import {encodeLength} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
-import {getLastMessagesUntilMaxTokens} from "./GetLastMessagesUntilMaxTokens";
+import {getLastMessagesUntilMaxTokens, getNumTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
 import {Filter, Vector} from 'pinecone-client';
 import {v4} from "uuid";
@@ -616,7 +616,7 @@ To toggle again, type \`<TOGGLE_EXTERNALS>\` in here again.`, messageToReplyTo);
             if (userOrServerHasPermissions) {
                 const {lastUpdated, nextSummaryMessageCount} = this;
                 const totalTokens = this.messageHistory.map(id => this.messageHistoryMap[id])
-                    .reduce((sum, item) => sum + item.numTokens, 0);
+                    .reduce((sum, item) => sum + getNumTokens(item), 0);
                 const responseTokens: CreateCompletionResponseUsage = this.messageHistory.map(id => this.messageHistoryMap[id])
                     .reduce((sum, item) => {
                         if (item.type === 'response') {
@@ -1237,7 +1237,7 @@ Thank you for your understanding.`),
             const scoreString = item.match.score.toFixed(3);
             const orderString = item.match.orderRanking.toFixed(3);
             const weightString = item.match.weighted.toFixed(3);
-            return `- ${indexString} S:${scoreString} O:${orderString} W:${weightString} ${item.message.numTokens.toString().padStart(4, '0')}
+            return `- ${indexString} S:${scoreString} O:${orderString} W:${weightString} ${getNumTokens(item.message).toString().padStart(4, '0')}
 ${messageToPromptPart(item.message)}`;
         }).join('\n');
 
@@ -1272,7 +1272,7 @@ ${messageToPromptPart(item.message)}`;
         let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
 
         const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
-        const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => sum + item.numTokens, 0);
+        const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => sum + getNumTokens(item), 0);
 
         if (totalTokensFromHistory < availableTokens) {
             // use only messages, it's simpler
@@ -1334,15 +1334,15 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
 
         // get top N until MAX_ALLOWED_TOKENS is reached?
         const usedTokensFromMessages = latestMessagesPlusNewMessage
-            .reduce((sum, item) => sum + item.numTokens, 0);
+            .reduce((sum, item) => sum + getNumTokens(item), 0);
 
         availableTokens -= usedTokensFromMessages;
 
         const includedRelevantMessages: RelevancyResult[] = [];
         for (const relevantMessage of unseenRelevantMessages) {
-            if (relevantMessage.message.numTokens < availableTokens) {
+            if (getNumTokens(relevantMessage.message) < availableTokens) {
                 includedRelevantMessages.push(relevantMessage);
-                availableTokens -= relevantMessage.message.numTokens;
+                availableTokens -= getNumTokens(relevantMessage.message);
             }
 
             if (availableTokens < 50) {
@@ -1358,7 +1358,7 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
 
         if (debug) {
             relevantPrefix = `---RELEVANT--`;
-            relevantSuffix = `---END RELEVANT - TOKENS: ${includedRelevantMessages.reduce((sum, item) => sum + item.message.numTokens, 0)} ---`;
+            relevantSuffix = `---END RELEVANT - TOKENS: ${includedRelevantMessages.reduce((sum, item) => sum + getNumTokens(item.message), 0)} ---`;
         } else {
             relevantPrefix = 'Earlier history:';
             relevantSuffix = 'Recent history:';

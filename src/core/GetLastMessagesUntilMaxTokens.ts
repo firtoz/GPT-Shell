@@ -3,6 +3,10 @@ import _ from 'lodash';
 import {messageToPromptPart} from "./ChatGPTConversation";
 import {encodeLength} from "./EncodeLength";
 
+export function getNumTokens(current: MessageHistoryItem) {
+    return encodeLength(messageToPromptPart(current));
+}
+
 export const getLastMessagesUntilMaxTokens = (
     messageHistory: MessageHistoryItem[],
     maxTokens: number,
@@ -15,18 +19,20 @@ export const getLastMessagesUntilMaxTokens = (
     }
 
     let i = messageHistory.length - 1;
-    if (messageHistory[i].numTokens > maxTokens) {
+    const numTokens = getNumTokens(messageHistory[i]);
+    if (numTokens > maxTokens) {
         return [];
     }
 
     while (i >= 0) {
         const current = messageHistory[i];
 
-        if (remainingTokens - current.numTokens < 0) {
+        const currentTokens = getNumTokens(current);
+        if (remainingTokens - currentTokens < 0) {
             break;
         }
 
-        remainingTokens -= current.numTokens;
+        remainingTokens -= currentTokens;
         i--;
     }
 
@@ -36,7 +42,7 @@ export const getLastMessagesUntilMaxTokens = (
         const lastMessageClone = _.cloneDeep(messageHistory[i]);
 
         while (lastMessageClone.content.length > 50) {
-            if (remainingTokens - lastMessageClone.numTokens >= 0) {
+            if (remainingTokens - getNumTokens(lastMessageClone) >= 0) {
                 return [lastMessageClone].concat(chosenItems);
             }
 

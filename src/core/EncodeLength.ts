@@ -5,14 +5,19 @@ const encoder = new GPT3Tokenizer({
     type: 'gpt3',
 });
 
+let printedWarnings = 0;
+
 export const encodeLength = (input: string): number => {
     try {
         return encoder.encode(input).bpe.length;
     } catch (e) {
-        logMessage(`Encoding error: input: 
+        if (printedWarnings < 10) {
+            printedWarnings++;
+            logMessage(`Encoding error: input: 
 \`\`\`js
 const input = \`${input.replace('\`', '\\`')}\`;
 \`\`\``);
+        }
         return Math.floor((input ?? '').split(' ').length * 2.30);
     }
 }

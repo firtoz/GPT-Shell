@@ -1,11 +1,11 @@
-import { ChangeStreamDocument, Document, Filter, FindOptions } from 'mongodb';
-type KeyValuePair = {
+import { ChangeStreamDocument, Collection, Document, Filter, FindOptions } from 'mongodb';
+export type KeyValuePair<T = any> = {
     key: string;
-    value: any;
+    value: T;
 };
 export declare class KeyValueDB {
     private readonly client;
-    private collection;
+    collection: Collection<KeyValuePair> | null;
     constructor();
     initialise(): Promise<boolean>;
     close(): Promise<boolean>;
@@ -13,6 +13,5 @@ export declare class KeyValueDB {
     set(key: string, value: any): Promise<void>;
     getAndWatch(key: string, callback: (value: string | null) => void): Promise<void>;
     watchKey(key: string, callback: (doc: ChangeStreamDocument<KeyValuePair>) => void): void;
-    find(filter: Filter<KeyValuePair>, options?: FindOptions<Document>): import("mongodb").FindCursor<import("mongodb").WithId<KeyValuePair>>;
+    find(filter: Filter<KeyValuePair>, options?: FindOptions<Document>): import("mongodb").FindCursor<import("mongodb").WithId<KeyValuePair<any>>>;
 }
-export {};
