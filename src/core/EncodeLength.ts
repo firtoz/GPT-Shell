@@ -16,7 +16,7 @@ export const encodeLength = (input: string): number => {
             logMessage(`Encoding error: input: 
 \`\`\`js
 const input = \`${input.replace('\`', '\\`')}\`;
-\`\`\``);
+\`\`\``, e);
         }
         return Math.floor((input ?? '').split(' ').length * 2.30);
     }
