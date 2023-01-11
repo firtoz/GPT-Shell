@@ -4,7 +4,15 @@ import {messageToPromptPart} from "./ChatGPTConversation";
 import {encodeLength} from "./EncodeLength";
 
 export function getNumTokens(current: MessageHistoryItem) {
-    return encodeLength(messageToPromptPart(current));
+    if (current.fixedTokens) {
+        return current.numTokens;
+    }
+
+    const number = encodeLength(messageToPromptPart(current));
+    current.numTokens = number;
+    current.fixedTokens = true;
+
+    return number;
 }
 
 export const getLastMessagesUntilMaxTokens = (

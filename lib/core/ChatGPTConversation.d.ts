@@ -32,6 +32,7 @@ export declare class ChatGPTConversation extends BaseConversation {
         content: string;
         numTokens: number;
         embedding: string | null;
+        fixedTokens: boolean | undefined;
     }>;
     private tryCreateEmbeddingForMessage;
     private SendPromptToGPTChat;

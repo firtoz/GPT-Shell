@@ -13,4 +13,5 @@ export type MessageHistoryItem = ({
     content: string;
     numTokens: number;
     embedding: null | string;
+    fixedTokens: boolean | undefined;
 };

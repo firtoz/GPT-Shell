@@ -181,6 +181,7 @@ export class ChatGPTConversation extends BaseConversation {
             username: user.username,
             userId: user.id,
             timestamp: timestamp,
+            fixedTokens: true,
         };
 
         newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
@@ -209,6 +210,7 @@ export class ChatGPTConversation extends BaseConversation {
             username: botUsername,
             timestamp: new Date().getTime(),
             usageInfo,
+            fixedTokens: true,
         };
 
         newMessageItem.numTokens = encodeLength(messageToPromptPart(newMessageItem));
@@ -1272,7 +1274,17 @@ ${messageToPromptPart(item.message)}`;
         let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
 
         const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
-        const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => sum + getNumTokens(item), 0);
+        let needFix = false;
+        const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => {
+            if(!item.fixedTokens) {
+                needFix = true;
+            }
+            return sum + getNumTokens(item);
+        }, 0);
+
+        if(needFix) {
+            await this.persist();
+        }
 
         if (totalTokensFromHistory < availableTokens) {
             // use only messages, it's simpler
