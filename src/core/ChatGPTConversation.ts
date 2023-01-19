@@ -47,7 +47,7 @@ import {
 } from "./config";
 import {getPineconeClient} from "./pinecone";
 import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
-import {extractDescriptions, ImageHandler} from "./ImageHandler";
+import {extractImageDescriptions, ImageHandler} from "./ImageHandler";
 import {KeyValuePair} from "../database/mongodb";
 import {getDateString} from "../utils/GetDateString";
 import {ConversationFactory} from "./ConversationFactory";
@@ -1012,7 +1012,7 @@ Source: ${lastMessages}`);
                                        currentConfig: ConfigForIdType,
                                        channel: TextBasedChannel,
     ) {
-        let descriptions = extractDescriptions(inputValue);
+        let descriptions = extractImageDescriptions(inputValue);
 
         if (descriptions.length === 0) {
             return [];

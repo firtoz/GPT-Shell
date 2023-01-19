@@ -158,7 +158,7 @@ export class ImageHandler {
     }
 }
 
-export const extractDescriptions = (text: string): string[] => {
+export const extractImageDescriptions = (text: string): string[] => {
     const pattern = /\[\[\s*(?:DRAW|IMAGE)\s*\|(.+?)\]\]/gi;
     const matches = text.match(pattern);
     if (!matches) {
