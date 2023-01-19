@@ -23,6 +23,7 @@ type ModalInput = {
     style: TextInputStyle;
     minLength?: number;
     maxLength?: number;
+    shouldShow?: (interaction: MessageComponentInteraction | CommandInteraction) => boolean,
 };
 
 type ModalValues<TInputs extends ModalInput[]> = { [K in TInputs[number]['name']]?: string };
@@ -43,7 +44,15 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
         try {
             const values = await getCurrentValues(interaction);
 
-            modal.addComponents(inputs.map(input => {
+            modal.addComponents(inputs.filter(input => {
+                const shouldShow = input.shouldShow as (interaction: MessageComponentInteraction | CommandInteraction) => boolean;
+
+                if (shouldShow) {
+                    return shouldShow(interaction);
+                }
+
+                return true;
+            }).map(input => {
                 let inputBuilder = new TextInputBuilder()
                     .setCustomId(input.name)
                     .setLabel(input.label)
@@ -51,11 +60,11 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
                     .setRequired(input.required)
                     .setStyle(input.style);
 
-                if(input.minLength != undefined) {
+                if (input.minLength != undefined) {
                     inputBuilder = inputBuilder.setMinLength(input.minLength)
                 }
 
-                if(input.maxLength != undefined) {
+                if (input.maxLength != undefined) {
                     inputBuilder = inputBuilder.setMaxLength(input.maxLength)
                 }
 
@@ -95,7 +104,7 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
         }
     };
 
-    if(buttonConfig !== null) {
+    if (buttonConfig !== null) {
         const buttonId = id + '-button';
 
         const newResult: ModalConfig<true> = {

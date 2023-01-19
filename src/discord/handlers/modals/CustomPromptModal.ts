@@ -1,5 +1,5 @@
 import {defineModal} from "../DefineModal";
-import {EmbedBuilder, TextInputStyle} from "discord.js";
+import {CommandInteraction, EmbedBuilder, MessageComponentInteraction, TextInputStyle} from "discord.js";
 import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
 import {discordClient} from "../../discordClient";
@@ -30,22 +30,44 @@ export const CustomPromptModal = defineModal(
         placeholder: '0 -> 1',
         required: false,
         style: TextInputStyle.Paragraph,
-    } , {
+    }, {
         name: 'showUsername',
         label: 'Show Username (true/false)',
         defaultValue: 'true',
         placeholder: 'true/false',
         required: true,
         style: TextInputStyle.Short,
+    }, {
+        name: 'makePrivate',
+        label: 'Private Only',
+        defaultValue: 'false',
+        placeholder: 'true/false',
+        required: true,
+        style: TextInputStyle.Short,
+        shouldShow: (interaction: MessageComponentInteraction | CommandInteraction) => {
+            const channel = interaction.channel;
+            if (channel) {
+                if (channel.isDMBased()) {
+                    return false;
+                }
+
+                if (channel.isThread()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }], async (interaction) => {
         const conversation = await retrieveConversation(interaction.channelId) as ChatGPTConversation | null;
 
         if (conversation) {
             return {
-                customUsername: conversation.username ?? ' ',
+                customUsername: conversation.username ?? discordClient.user!.username,
                 customPrompt: conversation.customPrompt ?? ' ',
                 temperature: conversation.temperature === undefined ? '0.8' : `${conversation.temperature}`,
                 showUsername: `${conversation.showUsername}`,
+                makePrivate: `${Boolean(conversation.makePrivate)}`,
             };
         }
 
@@ -54,6 +76,7 @@ export const CustomPromptModal = defineModal(
             customPrompt: ' ',
             temperature: '0.8',
             showUsername: 'true',
+            makePrivate: 'false',
         };
     },
     async (values, submitInteraction) => {
@@ -95,10 +118,10 @@ export const CustomPromptModal = defineModal(
                 conversation.customPrompt = '';
             }
             let temperature = conversation.temperature;
-            if(values.temperature !== undefined && values.temperature.length > 0) {
+            if (values.temperature !== undefined && values.temperature.length > 0) {
                 temperature = parseFloat(values.temperature);
 
-                if(isNaN(temperature)) {
+                if (isNaN(temperature)) {
                     temperature = conversation.temperature;
                 }
             } else {
@@ -108,6 +131,7 @@ export const CustomPromptModal = defineModal(
             conversation.temperature = Math.min(Math.max(temperature, 0), 1);
 
             conversation.showUsername = values.showUsername !== 'false';
+            conversation.makePrivate = values.makePrivate === 'true';
 
             await conversation.persist();
 

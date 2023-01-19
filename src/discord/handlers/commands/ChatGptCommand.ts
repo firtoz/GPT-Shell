@@ -80,8 +80,6 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
 
     const inputValue = inputOption?.value as string | undefined;
 
-    const threadName = `${user.username} - ${value ?? getDateString(new Date())}`
-        .substring(0, 80);
 
     let thread: AnyThreadChannel;
 
@@ -140,6 +138,9 @@ async function handleChat(interaction: CommandInteraction, client: Client<boolea
     }
 
     try {
+        const threadName = `${user.username} - ${value ?? getDateString(new Date())}`
+            .substring(0, 80);
+
         if (isPrivate) {
             const messageChannel = await discordClient.channels.fetch(message.channelId);
             if (messageChannel && messageChannel instanceof TextChannel) {

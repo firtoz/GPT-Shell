@@ -1,6 +1,15 @@
 import {db} from "../database/db";
 import {MultiMessage} from "../shared/MultiMessage";
-import {AnyThreadChannel, EmbedBuilder, EmbedType, Message, TextBasedChannel, User} from "discord.js";
+import {
+    AnyThreadChannel,
+    ChannelType,
+    EmbedBuilder,
+    EmbedType,
+    Message,
+    TextBasedChannel,
+    ThreadAutoArchiveDuration,
+    User
+} from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {
     CreateCompletionResponse, CreateCompletionResponseUsage,
@@ -40,6 +49,8 @@ import {getPineconeClient} from "./pinecone";
 import {getMessageCountForUser, getNowPlusOneMonth} from "./GetMessageCountForUser";
 import {extractDescriptions, ImageHandler} from "./ImageHandler";
 import {KeyValuePair} from "../database/mongodb";
+import {getDateString} from "../utils/GetDateString";
+import {ConversationFactory} from "./ConversationFactory";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -109,6 +120,7 @@ export class ChatGPTConversation extends BaseConversation {
 
     temperature: number = 0.8;
     showUsername: boolean = true;
+    makePrivate: boolean = false;
 
     summary: string = '';
 
@@ -425,11 +437,70 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
             return;
         }
 
+        const userId = user.id;
+
+        if (this.makePrivate && !channel.isDMBased() && !channel.isThread() && channel.isTextBased()) {
+            if (channel.type === ChannelType.GuildText) {
+                const threadName = `${user.username} - ${inputValue ?? getDateString(new Date())}`
+                    .substring(0, 80);
+
+                const newThread: AnyThreadChannel = await channel.threads.create({
+                    name: threadName,
+                    reason: 'ChatGPT',
+                    autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+                    type: ChannelType.PrivateThread,
+                }) as AnyThreadChannel;
+
+
+                const conversation = ConversationFactory.create(newThread.id, userId, channel.guildId, discordClient.user!.username, this.model);
+                conversation.username = this.username;
+                conversation.customPrompt = this.customPrompt;
+                conversation.temperature = this.temperature;
+                conversation.showUsername = this.showUsername;
+
+                await conversation.persist();
+
+                await trySendingMessage(newThread, {
+                    embeds: [
+                        new EmbedBuilder()
+                            .setAuthor({
+                                name: user.username,
+                                iconURL: user.avatarURL() ?? undefined,
+                            })
+                            .setDescription(inputValue),
+                    ],
+                });
+
+                await newThread.members.add(userId);
+
+                await conversation.handlePrompt(
+                    user,
+                    newThread,
+                    inputValue,
+                );
+
+                const newMessage = await trySendingMessage(newThread, {
+                    content: `[[<@${userId}>, ${conversation.username} will respond to your messages in this thread.]]`,
+                });
+
+                if (messageToReplyTo) {
+                    await messageToReplyTo.react('✅');
+                }
+
+                if (newMessage) {
+                    conversation.lastDiscordMessageId = newMessage.id;
+
+                    await conversation.persist();
+                }
+            }
+
+            return;
+        }
+
         let openai: OpenAIApi | undefined;
 
         logMessage(`PROMPT: [${user.username}] in ${await this.getLinkableId()}: ${inputValue}`);
 
-        const userId = user.id;
         const configId = this.isDirectMessage ? userId : this.guildId;
 
         let usingOpenAIForServer = false;
@@ -572,10 +643,10 @@ Alternatively, you can supply your OpenAI API key to me by using the \`/${CONFIG
                     }));
 
                     const string = guildInfo.sort((a, b) => {
-                        if(!a.success || !a.joined) {
+                        if (!a.success || !a.joined) {
                             return -1;
                         }
-                        if(!b.success || !b.joined) {
+                        if (!b.success || !b.joined) {
                             return 1;
                         }
 
@@ -1276,13 +1347,13 @@ ${messageToPromptPart(item.message)}`;
         const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
         let needFix = false;
         const totalTokensFromHistory = allMessagesInHistory.reduce((sum, item) => {
-            if(!item.fixedTokens) {
+            if (!item.fixedTokens) {
                 needFix = true;
             }
             return sum + getNumTokens(item);
         }, 0);
 
-        if(needFix) {
+        if (needFix) {
             await this.persist();
         }
 

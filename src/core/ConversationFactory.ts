@@ -57,13 +57,13 @@ export class ConversationFactory {
         }
 
         messageReceivedInThread[conversation.threadId] = true;
+        conversation.lastDiscordMessageId = message.id;
         await conversation.handlePrompt(
             message.author,
             channel,
             message.content,
             message,
         );
-        conversation.lastDiscordMessageId = message.id;
         return conversation;
     }
 
