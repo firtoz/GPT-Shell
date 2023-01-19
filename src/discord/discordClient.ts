@@ -6,6 +6,8 @@ export const discordClient = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.DirectMessageReactions,
     ],
     'partials': [Partials.Channel]
 });

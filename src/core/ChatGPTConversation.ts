@@ -51,6 +51,7 @@ import {extractImageDescriptions, ImageHandler} from "./ImageHandler";
 import {KeyValuePair} from "../database/mongodb";
 import {getDateString} from "../utils/GetDateString";
 import {ConversationFactory} from "./ConversationFactory";
+import {extractWolframDescriptions, WolframHandler} from "./WolframHandler";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -848,16 +849,14 @@ ${failures.map(([key]) => {
             logMessage(`${await this.getLinkableId()} moderation fail`, e);
         }
 
-        if (messageToReplyTo) {
-            this.lastDiscordMessageId = messageToReplyTo.id;
-        }
-
         let promiseComplete = false;
 
-        const descriptions = await this.getImageDescriptions(inputValue, usingOpenAIForServer, userId, currentConfig, channel);
+        if (messageToReplyTo) {
+            this.lastDiscordMessageId = messageToReplyTo.id;
 
-        if (descriptions.length && messageToReplyTo) {
-            ImageHandler.handle(openai, descriptions, userId, messageToReplyTo).catch();
+            await this.handleSpecialKeywords(openai!, inputValue, usingOpenAIForServer, userId, currentConfig, channel, messageToReplyTo);
+
+            await this.persist();
         }
 
         const sendPromise = this.SendPromptToGPTChat(
@@ -879,12 +878,7 @@ ${failures.map(([key]) => {
                     if (multi.messageList.length > 0) {
                         const lastMessage = multi.messageList[multi.messageList.length - 1];
                         this.lastDiscordMessageId = lastMessage.message.id;
-
-                        const descriptions = await this.getImageDescriptions(result, usingOpenAIForServer, userId, currentConfig, channel);
-
-                        if (descriptions.length && messageToReplyTo) {
-                            ImageHandler.handle(openai!, descriptions, userId, lastMessage.message).catch();
-                        }
+                        await this.handleSpecialKeywords(openai!, result, usingOpenAIForServer, userId, currentConfig, channel, lastMessage.message);
 
                         await this.persist();
                     }
@@ -966,6 +960,30 @@ Thank you for your understanding.`),
         if (multi.messageList.length > 0) {
             this.lastDiscordMessageId = multi.messageList[multi.messageList.length - 1].message.id;
             await this.persist();
+        }
+    }
+
+    private async handleSpecialKeywords(openai: OpenAIApi,
+                                        input: string,
+                                        usingOpenAIForServer: boolean,
+                                        userId: string,
+                                        currentConfig: ConfigForIdType,
+                                        channel: TextBasedChannel,
+                                        messageToReplyTo: Message<boolean>,
+    ) {
+        const imageDescriptions = await this.getImageDescriptions(input, usingOpenAIForServer, userId, currentConfig, channel);
+
+        if (imageDescriptions.length) {
+            ImageHandler.handle(openai, imageDescriptions, userId, messageToReplyTo).catch();
+        }
+
+        const WOLFRAM_APP_ID = getEnv('WOLFRAM_APP_ID')!;
+        if (WOLFRAM_APP_ID) {
+            const wolframDescriptions = extractWolframDescriptions(input);
+
+            if (wolframDescriptions.length) {
+                WolframHandler.handle(wolframDescriptions, userId, messageToReplyTo).catch();
+            }
         }
     }
 
