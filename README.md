@@ -160,7 +160,7 @@ Discord Server Details:
   Used to let you send some special commands and configure the bot.
 
 Extras:
-- WOLFRAM_APP_ID: Used for the Wolfram Alpha ability.
+- WOLFRAM_APP_ID: Used for the Wolfram Alpha ability. **DOESN'T WORK ON REPLIT!**
 
   Can create an app at https://developer.wolframalpha.com/portal/myapps and get its id.
 
