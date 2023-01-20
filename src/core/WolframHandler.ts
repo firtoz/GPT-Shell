@@ -87,6 +87,7 @@ export class WolframHandler {
         })[] = await Promise.all(descriptions.map(async description => {
             try {
                 const url = `https://api.wolframalpha.com/v1/simple?i=${encodeURIComponent(description)}&appid=${WOLFRAM_APP_ID}&width=1024&fontsize=38&units=metric&layout=labelbar`;
+                // http://api.wolframalpha.com/v2/query?appid=DEMO&input=population%20of%20france&output=json
 
                 return {
                     success: true,
@@ -141,14 +142,20 @@ export class WolframHandler {
                 const data = axiosError.response?.data;
                 const message = data ? new TextDecoder().decode(data) : 'Unknown error';
 
-                await messageToReplyTo.reply({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setTitle('Wolfram Request')
-                            .setDescription(`Failed to get image for description ${description}: ${message}`)
-                            .setColor(0xff0000)
-                    ],
-                });
+                const embeds = [
+                    new EmbedBuilder()
+                        .setTitle('Wolfram Request')
+                        .setDescription(`Failed to get image for description ${description}: ${message}`)
+                        .setColor(0xff0000)
+                ];
+
+                try {
+                    await messageToReplyTo.reply({
+                        embeds,
+                    });
+                } catch (e) {
+                    logMessage('failed to send error', e, {embeds});
+                }
             }
         }
 
