@@ -8,41 +8,45 @@ import {getEnv} from "../utils/GetEnv";
 const WOLFRAM_APP_ID = getEnv('WOLFRAM_APP_ID')!;
 
 async function getSplitImageData(url: string, maxHeight: number): Promise<Buffer[]> {
-    const {createCanvas, loadImage: canvasLoadImage} = await import('canvas');
-
     const axiosResponse: AxiosResponse<ArrayBuffer> = await axios({
         method: 'get',
         url,
         responseType: 'arraybuffer'
     });
 
-    const image = await canvasLoadImage(Buffer.from(axiosResponse.data));
-    const imageHeight = image.height;
-    const canvas = createCanvas(image.width, imageHeight);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0);
+    try {
+        const {createCanvas, loadImage: canvasLoadImage} = await import('canvas');
 
-    const buffers: Buffer[] = [];
+        const image = await canvasLoadImage(Buffer.from(axiosResponse.data));
+        const imageHeight = image.height;
+        const canvas = createCanvas(image.width, imageHeight);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
 
-    let currStart = 0;
-    let finished = false;
+        const buffers: Buffer[] = [];
 
-    while (!finished) {
-        let currEnd = currStart + maxHeight;
-        if (currEnd >= imageHeight) {
-            currEnd = imageHeight;
-            finished = true;
+        let currStart = 0;
+        let finished = false;
+
+        while (!finished) {
+            let currEnd = currStart + maxHeight;
+            if (currEnd >= imageHeight) {
+                currEnd = imageHeight;
+                finished = true;
+            }
+
+            const newCanvas = createCanvas(image.width, currEnd - currStart);
+            newCanvas.getContext('2d').putImageData(ctx.getImageData(0, currStart, image.width, currEnd - currStart), 0, 0);
+
+            buffers.push(newCanvas.toBuffer('image/png'));
+
+            currStart = currEnd + 1;
         }
 
-        const newCanvas = createCanvas(image.width, currEnd - currStart);
-        newCanvas.getContext('2d').putImageData(ctx.getImageData(0, currStart, image.width, currEnd - currStart), 0, 0);
-
-        buffers.push(newCanvas.toBuffer('image/png'));
-
-        currStart = currEnd + 1;
+        return buffers;
+    } catch (e) {
+        return [Buffer.from(axiosResponse.data)];
     }
-
-    return buffers;
 }
 
 type WolframHandlerRequestStorage = {
