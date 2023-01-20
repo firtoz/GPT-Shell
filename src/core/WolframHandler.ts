@@ -2,13 +2,14 @@ import {AttachmentBuilder, EmbedBuilder, Message, MessageReaction} from "discord
 import axios, {AxiosError, AxiosResponse} from "axios";
 import {v4} from "uuid";
 import {logMessage} from "../utils/logMessage";
-import {createCanvas, loadImage as canvasLoadImage} from 'canvas';
 import {discordClient} from "../discord/discordClient";
 import {getEnv} from "../utils/GetEnv";
 
 const WOLFRAM_APP_ID = getEnv('WOLFRAM_APP_ID')!;
 
 async function getSplitImageData(url: string, maxHeight: number): Promise<Buffer[]> {
+    const {createCanvas, loadImage: canvasLoadImage} = await import('canvas');
+
     const axiosResponse: AxiosResponse<ArrayBuffer> = await axios({
         method: 'get',
         url,
