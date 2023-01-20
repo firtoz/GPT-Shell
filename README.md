@@ -159,6 +159,11 @@ Discord Server Details:
   
   Used to let you send some special commands and configure the bot.
 
+Extras:
+- WOLFRAM_APP_ID: Used for the Wolfram Alpha ability.
+
+  Can create an app at https://developer.wolframalpha.com/portal/myapps and get its id.
+
 ## Long-Term Memory
 
 Starting from 2.0.0, the bot has the capacity to have a long-term memory.
