@@ -37,6 +37,8 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
     onSubmit: (values: ModalValues<TInputs>, interaction: ModalSubmitInteraction) => void,
 ): ModalConfig<TButtonConfig extends null ? false : true> => {
     const show = async (interaction: MessageComponentInteraction | CommandInteraction) => {
+        logMessage(`Showing modal \`${id}\`: \`${title}\` for ${interaction.user.tag}.`)
+
         const modal = new ModalBuilder()
             .setCustomId(id)
             .setTitle(title);
@@ -96,8 +98,16 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
             });
 
             const values: ModalValues<TInputs> = {};
+            const allFields = submitInteraction.fields.fields;
+
+            logMessage(`Submitted modal ${id}-${title} from ${submitInteraction.user.tag}: `, allFields);
+
             inputs.forEach(input => {
-                values[input.name as keyof ModalValues<TInputs>] = submitInteraction.fields.getTextInputValue(input.name);
+                if (allFields.get(input.name)) {
+                    values[input.name as keyof ModalValues<TInputs>] = submitInteraction.fields.getTextInputValue(input.name);
+                } else {
+                    values[input.name as keyof ModalValues<TInputs>] = '';
+                }
             });
 
             await onSubmit(values, submitInteraction);
