@@ -78,9 +78,13 @@ export const defineModal = <TInputs extends ModalInput[], TButtonConfig extends 
             }))
 
             // Show the modal to the user
-            await interaction.showModal(modal);
+            return await interaction
+                .showModal(modal)
+                .then(() => true, (e) => {
+                    logMessage(`Failed to show modal for id ${id}`, e);
 
-            return true;
+                    return false;
+                });
         } catch (e) {
             logMessage(`Failed to show modal for id ${id}`, e);
 
