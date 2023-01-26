@@ -23,17 +23,7 @@ import serverJoin from "./discord/listeners/serverJoin";
     global
         .process
         .on('uncaughtException', e => {
-            // setTimeout(() => {
-            //     process.exit(1);
-            // }, 10000);
             logMessage('uncaughtException:', e);
-
-            // if (messagePromise) {
-            //     messagePromise
-            //         .finally(() => {
-            //             process.exit(1);
-            //         });
-            // }
         });
 
     await discordClient.login(botToken);
