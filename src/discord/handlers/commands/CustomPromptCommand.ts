@@ -5,6 +5,7 @@ import {getEnv} from "../../../utils/GetEnv";
 import {retrieveConversation} from "../../../core/RetrieveConversation";
 import {ChatGPTConversation} from "../../../core/ChatGPTConversation";
 import {getConfig, getConfigForId} from "../../../core/config";
+import {logMessage} from "../../../utils/logMessage";
 
 const CUSTOM_PROMPT_COMMAND_NAME = getEnv('CUSTOM_PROMPT_COMMAND_NAME');
 
@@ -87,7 +88,13 @@ Please ask the bot owner for permissions.`,
             }
         }
 
-        const shown = await CustomPromptModal.show(interaction);
+        let shown: boolean = false;
+        try {
+            shown = await CustomPromptModal.show(interaction);
+        } catch (e) {
+            logMessage(e);
+        }
+
         if (!shown) {
             await interaction.reply({
                 ephemeral: true,
