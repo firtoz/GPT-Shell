@@ -1479,95 +1479,102 @@ ${latestMessagesAndCurrentPrompt}${debug ? `
 
     private async getRelevantMessages(user: User, openai: OpenAIApi, orderWeight: number, vector: number[] | null):
         Promise<RelevancyResult[]> {
-        const pinecone = await getPineconeClient();
+        try {
+            const pinecone = await getPineconeClient();
 
-        if (!vector || !pinecone) {
+            if (!vector || !pinecone) {
+                return [];
+            }
+
+            if (this.nextEmbedCheck < new Date().getTime()) {
+                await this.tryEmbedMany(user, openai);
+
+                // 1 day
+                this.nextEmbedCheck = new Date().getTime() + 86_400_000;
+                await this.persist();
+            }
+
+            const scoreWeight = 1 - orderWeight;
+
+            const queryParams: {
+                topK: number;
+                filter?: Filter<PineconeMetadata>;
+                includeMetadata: true;
+                includeValues?: boolean;
+                vector: number[];
+            } = {
+                topK: 100,
+                filter: {
+                    threadId: this.threadId,
+                },
+                includeMetadata: true,
+                vector,
+            };
+
+            const queryResult = await pinecone.query(queryParams);
+
+            const timestamps = this.messageHistory
+                .map(id => this.messageHistoryMap[id])
+                .map(item => item.timestamp)
+                .filter(ts => ts !== undefined) as number[];
+
+            const sorted = queryResult.matches.map(match => {
+                return {
+                    index: binarySearchIndex(timestamps, match.metadata.timestamp),
+                    score: match.score,
+                };
+            }).filter(match => match.index !== -1);
+
+            // message id to max score map
+            const wantedMessages: Record<number, number> = {};
+
+            for (const match of sorted) {
+                const index = match.index;
+
+                const matchingMessage = this.messageHistoryMap[this.messageHistory[match.index]];
+
+                wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
+
+                if (matchingMessage.type === 'human') {
+                    if (this.messageHistory.length > index + 1) {
+                        wantedMessages[index + 1] = Math.max(wantedMessages[index + 1] ?? 0, match.score);
+                    }
+                } else {
+                    if (index > 0) {
+                        wantedMessages[index - 1] = Math.max(wantedMessages[index - 1] ?? 0, match.score);
+                    }
+                }
+            }
+
+
+            const entries = Object
+                .entries(wantedMessages) as any as [index: number, score: number][];
+
+            return entries.map(([index, score]): RelevancyResult => {
+                const matchingMessage = this.messageHistoryMap[this.messageHistory[index]];
+
+                const orderRanking = (index / this.messageHistory.length);
+
+                const weighted = score * scoreWeight + orderWeight * orderRanking;
+
+                const relevancyMatch: RelevancyMatch = {
+                    index,
+                    score,
+                    weighted,
+                    orderRanking,
+                };
+
+                return {
+                    match: relevancyMatch,
+                    message: matchingMessage,
+                }
+            });
+
+        } catch (e) {
+            logMessage('cannot get relevant messages', e);
+
             return [];
         }
-
-        if (this.nextEmbedCheck < new Date().getTime()) {
-            await this.tryEmbedMany(user, openai);
-
-            // 1 day
-            this.nextEmbedCheck = new Date().getTime() + 86_400_000;
-            await this.persist();
-        }
-
-        const scoreWeight = 1 - orderWeight;
-
-        const queryParams: {
-            topK: number;
-            filter?: Filter<PineconeMetadata>;
-            includeMetadata: true;
-            includeValues?: boolean;
-            vector: number[];
-        } = {
-            topK: 100,
-            filter: {
-                threadId: this.threadId,
-            },
-            includeMetadata: true,
-            vector,
-        };
-
-        const queryResult = await pinecone.query(queryParams);
-
-        const timestamps = this.messageHistory
-            .map(id => this.messageHistoryMap[id])
-            .map(item => item.timestamp)
-            .filter(ts => ts !== undefined) as number[];
-
-        const sorted = queryResult.matches.map(match => {
-            return {
-                index: binarySearchIndex(timestamps, match.metadata.timestamp),
-                score: match.score,
-            };
-        }).filter(match => match.index !== -1);
-
-        // message id to max score map
-        const wantedMessages: Record<number, number> = {};
-
-        for (const match of sorted) {
-            const index = match.index;
-
-            const matchingMessage = this.messageHistoryMap[this.messageHistory[match.index]];
-
-            wantedMessages[index] = Math.max(wantedMessages[index] ?? 0, match.score);
-
-            if (matchingMessage.type === 'human') {
-                if (this.messageHistory.length > index + 1) {
-                    wantedMessages[index + 1] = Math.max(wantedMessages[index + 1] ?? 0, match.score);
-                }
-            } else {
-                if (index > 0) {
-                    wantedMessages[index - 1] = Math.max(wantedMessages[index - 1] ?? 0, match.score);
-                }
-            }
-        }
-
-
-        const entries = Object
-            .entries(wantedMessages) as any as [index: number, score: number][];
-
-        return entries.map(([index, score]): RelevancyResult => {
-            const matchingMessage = this.messageHistoryMap[this.messageHistory[index]];
-
-            const orderRanking = (index / this.messageHistory.length);
-
-            const weighted = score * scoreWeight + orderWeight * orderRanking;
-
-            const relevancyMatch: RelevancyMatch = {
-                index,
-                score,
-                weighted,
-                orderRanking,
-            };
-
-            return {
-                match: relevancyMatch,
-                message: matchingMessage,
-            }
-        });
     }
 
     public sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
