@@ -1,13 +1,17 @@
 import {AnyThreadChannel, Message} from "discord.js";
 import {retrieveConversation} from "../../../../core/RetrieveConversation";
 import {messageReceivedInThread} from "./messageReceivedInThread";
-import {ChatGPTConversation} from "../../../../core/ChatGPTConversation";
+import {ChatGPTConversation, ignoreInput} from "../../../../core/ChatGPTConversation";
 
 export async function handleThread(
     channelId: string,
     message: Message<boolean>,
     channel: AnyThreadChannel<true>
 ) {
+    if (ignoreInput(message.content)) {
+        return;
+    }
+
     const info = await retrieveConversation(channelId) as ChatGPTConversation;
 
     if (info === null) {

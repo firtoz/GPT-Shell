@@ -108,6 +108,10 @@ type RelevancyCheckCache = {
     results: RelevancyResult[],
 };
 
+export function ignoreInput(inputValue: string) {
+    return inputValue.match(/^\s*~/) || inputValue.match(/^\s*\[\[\s*ps+t\s*\]\]/i);
+}
+
 export class ChatGPTConversation extends BaseConversation {
     static latestVersion = 3;
 
@@ -434,7 +438,7 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
         inputValue: string,
         messageToReplyTo?: Message<boolean>,
     ): Promise<void> {
-        if (inputValue.match(/^\s*\[\[\s*ps+t\s*\]\]/i)) {
+        if (ignoreInput(inputValue)) {
             return;
         }
 
