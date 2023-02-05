@@ -1,5 +1,8 @@
 # GPT-Shell
 
+| :exclamation:  The new version of GPT-Shell is called Erin! Find out more at [Erin's Website!](https://erin.ac/?ref=github-readme) :exclamation: |
+|--------------------------------------------------------------------------------------------------------------------------------------------------|
+
 GPT-Shell is an OpenAI based chat-bot that is similar to OpenAI's ChatGPT (https://chat.openai.com/).
 
 It allows users to converse with a virtual companion. It uses nodejs and typescript, as well as modern yarn,
