@@ -347,11 +347,9 @@ You can alternatively supply your own API key to me by sending me the /${CONFIG_
                 } else if (data.error?.message) {
                     logMessage('Bad response', response.data, {numRetries, maxRetries});
 
-                    if (data.error.message.includes('currently overloaded')) {
-                        if (numRetries < maxRetries) {
-                            numRetries++;
-                            continue;
-                        }
+                    if (numRetries < maxRetries) {
+                        numRetries++;
+                        continue;
                     }
 
                     onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
