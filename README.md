@@ -131,6 +131,7 @@ LOG_CHANNEL_ID=
 MAIN_SERVER_INVITE=
 ADMIN_PING_ID=
 USE_SAME_API_KEY_FOR_ALL=false
+IGNORE_INIT=false
 ```
 </details>
 
@@ -161,6 +162,10 @@ Discord Server Details:
 - ADMIN_PING_ID: Bot owner's Discord id (that's you!)
   
   Used to let you send some special commands and configure the bot.
+- IGNORE_INIT: (Optional) When set to 'true', when it starts, will not check active threads for new messages
+  since the bot was last online.
+  If you're in many servers, there may be many active threads, so that would hit a rate limit. In that case, it's better
+  to handle messages as they come, instead of checking many threads at once.
 
 Extras:
 - WOLFRAM_APP_ID: Used for the Wolfram Alpha ability.
