@@ -15,3 +15,4 @@ tsconfig.tsbuildinfo
 .env.local
 tmp
 node_modules
+.DS_Store
