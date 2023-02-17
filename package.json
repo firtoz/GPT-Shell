@@ -43,7 +43,7 @@
     "forever": "^4.0.3",
     "gpt3-tokenizer": "^1.1.4",
     "lodash": "^4.17.21",
-    "mongodb": "^4.12.1",
+    "mongodb": "^5.0.1",
     "openai": "^3.1.0",
     "pinecone-client": "^1.0.1",
     "pnpapi": "^0.0.0",
