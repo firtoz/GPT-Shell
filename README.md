@@ -73,6 +73,8 @@ Nodejs: https://nodejs.org/en/ (18 or above)
 
 Yarn: https://yarnpkg.com/getting-started/install (after installing nodejs)
 
+PM2: https://pm2.io/docs/runtime/guide/installation/ (If you are want your bot to run 24/7)
+
 To use GPT-Shell, you will need to:
 - Clone the project
 - Open the terminal in the project's folder 
