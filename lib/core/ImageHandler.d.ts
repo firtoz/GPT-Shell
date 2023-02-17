@@ -25,5 +25,5 @@ export declare class ImageHandler {
     private persist;
     private handle;
 }
-export declare const extractDescriptions: (text: string) => string[];
+export declare const extractImageDescriptions: (text: string) => string[];
 export {};

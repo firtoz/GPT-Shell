@@ -4,6 +4,7 @@ import { ModelName } from "./ModelInfo";
 import { BaseConversation } from "./BaseConversation";
 import { MessageHistoryItem } from "./MessageHistoryItem";
 export declare const messageToPromptPart: (item: MessageHistoryItem) => string;
+export declare function ignoreInput(inputValue: string): RegExpMatchArray | null;
 export declare class ChatGPTConversation extends BaseConversation {
     username: string;
     private model;
@@ -14,6 +15,7 @@ export declare class ChatGPTConversation extends BaseConversation {
     customPrompt: string | null;
     temperature: number;
     showUsername: boolean;
+    makePrivate: boolean;
     summary: string;
     nextSummaryMessageCount: number;
     allowExternals: boolean;
@@ -37,6 +39,7 @@ export declare class ChatGPTConversation extends BaseConversation {
     private tryCreateEmbeddingForMessage;
     private SendPromptToGPTChat;
     handlePrompt(user: User, channel: TextBasedChannel, inputValue: string, messageToReplyTo?: Message<boolean>): Promise<void>;
+    private handleSpecialKeywords;
     private trySummariseThread;
     private getImageDescriptions;
     private userHasExceptionRole;

@@ -10,6 +10,7 @@ type ModalInput = {
     style: TextInputStyle;
     minLength?: number;
     maxLength?: number;
+    shouldShow?: (interaction: MessageComponentInteraction | CommandInteraction) => boolean;
 };
 type ModalValues<TInputs extends ModalInput[]> = {
     [K in TInputs[number]['name']]?: string;
