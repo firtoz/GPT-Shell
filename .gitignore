@@ -14,3 +14,7 @@
 tsconfig.tsbuildinfo
 .env.local
 tmp
+node_modules
+.yarn/cache/*
+package-lock.json
+yarn.lock
