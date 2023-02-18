@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon ./src/index.ts",
     "build": "yarn rimraf ./lib/ && yarn tsc && echo build complete",
-    "start": "yarn exec forever --minUptime 1000 --spinSleepTime 1000 ./lib/index.js",
+    "start": "pm2 start ./lib/index.js --name GPT-Shell && pm2 save && pm2 logs",
     "start-replit": "yarn node --version ./lib/index.js",
     "test": "vitest run",
     "vitest": "vitest"
@@ -41,7 +41,6 @@
     "discord-interactions": "^3.3.0",
     "discord.js": "^14.9.0",
     "dotenv": "^16.0.3",
-    "forever": "^4.0.3",
     "gpt3-tokenizer": "^1.1.5",
     "lodash": "^4.17.21",
     "mongodb": "^4.12.1",

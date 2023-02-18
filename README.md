@@ -3,7 +3,7 @@
 | :exclamation:  The new version of GPT-Shell is called Erin! Find out more at [Erin's Website!](https://erin.ac/?ref=github-readme) :exclamation: |
 |--------------------------------------------------------------------------------------------------------------------------------------------------|
 
-GPT-Shell is an OpenAI based chat-bot that is similar to OpenAI's ChatGPT (https://chat.openai.com/).
+GPT-Shell is an OpenAI based chat-bot that is similar to OpenAI's [ChatGPT](https://chat.openai.com/).
 
 It allows users to converse with a virtual companion. It uses nodejs and typescript, as well as modern yarn,
 to create a seamless conversation experience.
@@ -20,10 +20,6 @@ You can try the bot on the official Discord server:
 
 ## Usage
 
-Set up a discord bot and add it to your server.
-
-Follow the setup instructions below.
-
 To interact with GPT-Shell, users can:
 - Use the `/chat-gpt` command to start a conversation with the bot
 - Ping the bot in a channel it's in
@@ -36,6 +32,8 @@ The bot is able to handle multiple conversations at once,
 so you can start as many conversations as you like.
 
 ## Bot Setup
+Set up a discord bot [here](https://discord.com/developers/applications/) and add it to your server.
+
 Scopes:
 - bot
 - application.commands
@@ -61,52 +59,41 @@ You also need to enable the Message Content Intent:
 
 ## Setup
 
-You can try to fork the replit:
+- You can try to fork the [replit here](https://replit.com/@Ephemeros/GPT-Shell)
 
-https://replit.com/@Ephemeros/GPT-Shell
-
-Or you can set it up on your machine.
+- Or you can set it up on your machine.
 
 ### Prerequisites:
 
-Nodejs: https://nodejs.org/en/ (18 or above)
+- [Nodejs](https://nodejs.org/en/): (18 or above)
 
-Yarn: https://yarnpkg.com/getting-started/install (after installing nodejs)
+- [Yarn](https://yarnpkg.com/getting-started/install): (after installing nodejs)
+
+- [pm2](https://pm2.io/docs/runtime/guide/installation/): To keep your bot alive even after killing your terminal.
 
 To use GPT-Shell, you will need to:
-- Clone the project
-- Open the terminal in the project's folder 
-  - (in windows, right click somewhere in the folder and select "Open In Terminal")
-  - if you see something about powershell, type `cmd` and hit enter, to go to the simpler command line terminal.
-- Run `yarn install`
-
-Set up the environment variables as described below.
-
-Then to start a development environment, run `yarn dev`.
-This way, whenever you change the code, it will restart the bot to update.
-
-To build and run, run `yarn build` and then `yarn start`.
-
-Go to your server, and type the config command, and set the API key for your server using the config.
-
+- Clone the project:
 ```
-/chat-gpt-config
+git clone https://github.com/firtoz/GPT-Shell.git
 ```
+- Open the terminal in the project's folder:
+```
+cd GPT-Shell
+```
+(in windows, right click somewhere in the folder and select "Open In Terminal")
+if you see something about powershell, type `cmd` and hit enter, to go to the simpler command line terminal.
+- Install yarn:
+```
+yarn install
+```
+- Set up environment variables
 
-<details>
-<summary>Expand to see config image</summary>
-
-![config-api-key.png](config-api-key.png)
-
-</details>
-
-
-## Environment Variables
+## Setting up Environment Variables
 
 The following environment variables are required for GPT-Shell to work properly.
 
-You can set the environment variables in any way you like, or place an .env.local file at the root of your project,
-next to `package.json`, that looks like this:
+You can set the environment variables in any way you like, or place an .env.local file at the root of your project (rename `example.env.local` to `.env.local`),
+Ensure that your `.env.local` looks like this:
 <details>
   <summary> [EXPAND] Click to see .env.local</summary>
   
@@ -171,6 +158,73 @@ Extras:
 - WOLFRAM_APP_ID: Used for the Wolfram Alpha ability.
 
   Can create an app at https://developer.wolframalpha.com/portal/myapps and get its id.
+
+## Start your bot
+Set up the environment variables as described above.
+- Install pm2:
+
+With yarn:
+```
+yarn global add pm2
+```
+With npm:
+```
+npm install pm2 -g
+```
+With debian, use the install script:
+```
+apt update && apt install sudo curl && curl -sL https://raw.githubusercontent.com/Unitech/pm2/master/packager/setup.deb.sh | sudo -E bash -
+```
+- Then to start a development environment, run 
+```
+yarn dev
+```
+This way, whenever you change the code, it will restart the bot to update.
+
+- To build and start the bot, run 
+```
+yarn build
+``` 
+and then 
+```
+yarn start
+```
+You can also run `npm start` or `npm run start` to start the bot.
+
+NOTE: running `yarn start`, `npm start` or `npm run start` will start the bot with PM2 and give it the name "GPT-Shell". You can replace "GPT-Shell" with a name of your choice in [package.json](https://github.com/firtoz/GPT-Shell/blob/main/package.json). It will also show logs for the PM2 running processes and save them.
+
+If you are in dev environment, use `node .` to test your code:
+```
+node .
+```
+Once you are satisfied with the changes run:
+```
+pm2 restart GPT-Shell && pm2 logs
+```
+You can also restart it from the [pm2.io dashboard](https://pm2.io/) as shown bellow:
+<details>
+<summary>Expand to see image</summary>
+
+![image](https://cdn.discordapp.com/attachments/1072834906742345808/1076183450417123358/image.png)
+
+</details>
+
+## Configuration
+
+Go to your server, and type the config command, and set the API key for your server using the config.
+
+```
+/chat-gpt-config
+```
+
+<details>
+<summary>Expand to see config image</summary>
+
+![config-api-key.png](config-api-key.png)
+
+</details>
+
+
 
 ## Long-Term Memory
 
