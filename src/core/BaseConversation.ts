@@ -6,6 +6,7 @@ import {conversationCache} from "./ConversationCache";
 import {trySendingMessage} from "./TrySendingMessage";
 import {getWhimsicalResponse} from "../discord/listeners/ready/getWhimsicalResponse";
 import {messageReceivedInThread} from "../discord/listeners/ready/message-handling/messageReceivedInThread";
+import {getEnv} from "../utils/GetEnv";
 
 const THREAD_PREFIX = `THREAD-`;
 
@@ -265,6 +266,10 @@ I will respond to this message now.]]`
         }
 
         if (!thread.isTextBased()) {
+            return;
+        }
+
+        if (getEnv('IGNORE_INIT') === 'true') {
             return;
         }
 
