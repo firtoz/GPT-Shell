@@ -12,13 +12,14 @@ import {
 } from "discord.js";
 import {logMessage, printArg} from "../utils/logMessage";
 import {
+    ChatCompletionRequestMessage,
     CreateCompletionResponse, CreateCompletionResponseUsage,
     CreateEmbeddingResponse,
     CreateModerationResponse,
     CreateModerationResponseResultsInnerCategoryScores,
     OpenAIApi
 } from 'openai';
-import {AxiosResponse} from "axios";
+import {AxiosError, AxiosResponse} from "axios";
 import {getEnv} from "../utils/GetEnv";
 import {getMissingAPIKeyResponse} from "../utils/GetMissingAPIKeyResponse";
 import {ModelName} from "./ModelInfo";
@@ -28,7 +29,7 @@ import {discordClient, getGuildName} from "../discord/discordClient";
 import {BaseConversation} from "./BaseConversation";
 import {getCustomPrompt, getOriginalPrompt} from "./GetOriginalPrompt";
 import {CompletionError} from "./CompletionError";
-import {encodeLength} from "./EncodeLength";
+import {encodeLength, numTokensFromMessages} from "./EncodeLength";
 import {END_OF_PROMPT} from "./constants";
 import {getLastMessagesUntilMaxTokens, getNumTokens} from "./GetLastMessagesUntilMaxTokens";
 import {MessageHistoryItem} from "./MessageHistoryItem";
@@ -52,6 +53,8 @@ import {KeyValuePair} from "../database/mongodb";
 import {getDateString} from "../utils/GetDateString";
 import {ConversationFactory} from "./ConversationFactory";
 import {extractWolframDescriptions, WolframHandler} from "./WolframHandler";
+import {CompletionErrorType, getChatCompletionSimple} from "@firtoz/openai-wrappers";
+import {CustomCompletionError} from "@firtoz/openai-wrappers/src/types";
 
 const adminPingId = getEnv('ADMIN_PING_ID');
 const CONFIG_COMMAND_NAME = getEnv('CONFIG_COMMAND_NAME');
@@ -290,10 +293,6 @@ export class ChatGPTConversation extends BaseConversation {
     ): Promise<void> {
         const modelInfo = config.modelInfo[this.model];
 
-        let finished = false;
-        let numRetries = 0;
-        const maxRetries = 3;
-        let latestResponseText = '';
         let usageInfo: CreateCompletionResponseUsage[] = [];
 
         const relevancyResultsCache: RelevancyCheckCache = {
@@ -303,131 +302,76 @@ export class ChatGPTConversation extends BaseConversation {
 
         const inputMessageItem = await this.createHumanMessage(openai, user, message);
 
-        while (!finished) {
-            let response: AxiosResponse<CreateCompletionResponse> | undefined;
+        let response: string | CustomCompletionError;
+        let fullPrompt: ChatCompletionRequestMessage[];
+        try {
+            fullPrompt = await this.getFullPrompt(config, openai, user, inputMessageItem, relevancyResultsCache);
+        } catch (e) {
+            onProgress('[[Could not create a prompt :( Please message the bot owner for more info.]]', true);
+            logMessage('Unhandled error:', e);
 
-            try {
-                const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
+            return;
+        }
 
-                const fullPrompt = await this.getFullPrompt(config, openai, user, inputMessageItem, latestResponseText, relevancyResultsCache);
-
-                response = await openai.createCompletion({
-                    model: this.model,
-                    prompt: fullPrompt,
-                    temperature: this.temperature,
-                    max_tokens: maxTokens,
-                    top_p: 0.9,
-                    frequency_penalty: 0,
-                    presence_penalty: 0,
-                    user: user.id,
-                }) as any;
-            } catch (e: any) {
-                if (e.isAxiosError) {
-                    response = e.response;
-                } else {
-                    logMessage('Unhandled error:', e);
-                    finished = true;
-                }
+        const maxTokens = modelInfo.MAX_TOKENS_PER_RESPONSE;
+        response = (await getChatCompletionSimple({
+            openai,
+            messages: fullPrompt,
+            options: {
+                model: 'gpt-3.5-turbo',
+                temperature: this.temperature,
+                max_tokens: maxTokens,
+                top_p: 0.9,
+                frequency_penalty: 0,
+                presence_penalty: 0,
+                user: user.id,
             }
+        }).catch(e => e as CustomCompletionError));
 
-            if (!response) {
-                onProgress('[[Could not get a response from OpenAI :( Perhaps their servers are down?]]', true);
-                finished = true;
-                break;
-            }
-
-            if (response.status !== 200) {
-                const data = response.data as unknown as CompletionError;
-
-                if (data.error?.type === 'insufficient_quota') {
-
+        if (typeof response !== 'string') {
+            switch (response.type) {
+                case CompletionErrorType.Unknown:
+                    onProgress('[[Unknown error from OpenAI servers. Please ping the bot owner for help.]]', true);
+                    break;
+                case CompletionErrorType.NoResponse:
+                    onProgress('[[Could not get a response from OpenAI :( Perhaps their servers are down?]]', true);
+                    break;
+                case CompletionErrorType.OutOfTokens:
                     onProgress(`[[Whoops, ran out of tokens :( Contact your OpenAI account holder please.${usingOpenAIForServer ? `
 
 You can alternatively supply your own API key to me by sending me the /${CONFIG_COMMAND_NAME} command in a DM.` : ''}]]`, true);
-                } else if (data.error?.message) {
-                    logMessage('Bad response', response.data, {numRetries, maxRetries});
 
-                    if (numRetries < maxRetries) {
-                        numRetries++;
-                        continue;
-                    }
-
-                    onProgress(`[[Error from OpenAI servers: "${data.error.message}"]]`, true);
-                } else {
-                    onProgress('[[Unknown error from OpenAI servers. Please ping the bot owner for help.]]', true);
-                }
-
-                logMessage('Bad response', response.data);
-                finished = true;
-                break;
+                    break;
+                case CompletionErrorType.Aborted:
+                    // will not happen
+                    break;
             }
 
-            const choices = response.data.choices;
-            if (choices.length !== 1) {
-                logMessage('Not enough choices?!');
-                finished = true;
-
-                return;
-            }
-
-            const choice = choices[0];
-
-            const text = choice.text;
-
-            if (text == undefined) {
-                logMessage('No text?!');
-                finished = true;
-
-                return;
-            }
-
-            latestResponseText += text;
-            const currentUsage = response.data.usage;
-            if (currentUsage) {
-                usageInfo.push(currentUsage);
-            }
-
-            if (choice.finish_reason !== 'stop') {
-                if (onProgress) {
-                    onProgress(latestResponseText, false);
-                }
-
-                finished = false;
-            } else {
-                if (onProgress) {
-                    onProgress(latestResponseText, true);
-                }
-
-                finished = true;
-
-                const embeddingPromise = this.tryCreateEmbeddingForMessage(
-                    openai,
-                    user,
-                    inputMessageItem.content,
-                    inputMessageItem.timestamp!,
-                    inputMessageItem.id,
-                );
-
-                const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, latestResponseText, usageInfo);
-
-                inputMessageItem.embedding = await embeddingPromise;
-                const responseMessage = await createResponseMessagePromise;
-
-                this.messageHistoryMap[inputMessageItem.id] = inputMessageItem;
-                this.messageHistory.push(inputMessageItem.id);
-
-                this.messageHistory.push(responseMessage.id);
-                this.messageHistoryMap[responseMessage.id] = responseMessage;
-
-                logMessage(`RESPONSE: ${await this.getLinkableId()} ${latestResponseText}`, 'usage', response.data.usage);
-
-                await this.persist();
-
-                return;
-            }
+            return;
         }
 
-        return;
+        if (onProgress) {
+            onProgress(response, true);
+        }
+
+        const embeddingPromise = this.tryCreateEmbeddingForMessage(
+            openai,
+            user,
+            inputMessageItem.content,
+            inputMessageItem.timestamp!,
+            inputMessageItem.id,
+        );
+
+        const createResponseMessagePromise = this.createResponseMessage(openai, this.username, user, response, usageInfo);
+        inputMessageItem.embedding = await embeddingPromise;
+        const responseMessage = await createResponseMessagePromise;
+        this.messageHistoryMap[inputMessageItem.id] = inputMessageItem;
+        this.messageHistory.push(inputMessageItem.id);
+        this.messageHistory.push(responseMessage.id);
+        this.messageHistoryMap[responseMessage.id] = responseMessage;
+        logMessage(`RESPONSE: ${await this.getLinkableId()} ${response}`);
+
+        await this.persist();
     }
 
     async handlePrompt(
@@ -762,14 +706,21 @@ ${JSON.stringify(debugInfo, null, '  ')}
 
             const inputMessageItem = await this.createHumanMessage(openai, user, input);
 
-            const fullPrompt = await this.getFullPrompt(currentConfig, openai, user, inputMessageItem, '', {
-                searchPerformed: false,
-                results: [],
-            }, true);
+            const fullPrompt = await this.getFullPrompt(
+                currentConfig,
+                openai,
+                user,
+                inputMessageItem,
+                {
+                    searchPerformed: false,
+                    results: [],
+                }, true);
 
             const prompt = `===PROMPT===
-${fullPrompt}
-===END PROMPT - TOKENS: ${encodeLength(fullPrompt)} ===`;
+\`\`\`
+${fullPrompt.map(item => JSON.stringify(item, null, '  ').replaceAll('```', '\\`\\`\\`'))}
+\`\`\`
+===END PROMPT - TOKENS: ${numTokensFromMessages(fullPrompt)} ===`;
 
             await new MultiMessage(channel, undefined, messageToReplyTo).update(prompt, true);
 
@@ -1344,10 +1295,9 @@ ${messageToPromptPart(item.message)}`;
         openai: OpenAIApi,
         user: User,
         inputMessageItem: MessageHistoryItem,
-        latestResponseText: string,
         relevancyCheckCache: RelevancyCheckCache,
         debug: boolean = false,
-    ) {
+    ): Promise<ChatCompletionRequestMessage[]> {
         let initialPrompt: string;
 
         if (this.customPrompt) {
@@ -1355,14 +1305,21 @@ ${messageToPromptPart(item.message)}`;
         } else {
             initialPrompt = getOriginalPrompt(this.username);
         }
+
+        const result: ChatCompletionRequestMessage[] = [];
+
+        result.push({
+            role: 'system',
+            content: initialPrompt,
+        })
+
         const modelInfo = config.modelInfo[this.model];
 
         const numInitialPromptTokens = encodeLength(initialPrompt);
-        const currentResponseTokens = encodeLength(latestResponseText);
 
         const inputTokens = encodeLength(messageToPromptPart(inputMessageItem));
 
-        let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - currentResponseTokens - inputTokens;
+        let availableTokens = modelInfo.MAX_ALLOWED_TOKENS - numInitialPromptTokens - inputTokens;
 
         const allMessagesInHistory = this.messageHistory.map(id => this.messageHistoryMap[id]);
         let needFix = false;
@@ -1377,12 +1334,32 @@ ${messageToPromptPart(item.message)}`;
             await this.persist();
         }
 
+
         if (totalTokensFromHistory < availableTokens) {
             // use only messages, it's simpler
+            result.push(...allMessagesInHistory.map((item): ChatCompletionRequestMessage => {
+                    switch (item.type) {
+                        case "human":
+                            return {
+                                role: 'user',
+                                name: item.username,
+                                content: item.content,
+                            };
+                        case "response":
+                            return {
+                                role: 'assistant',
+                                content: item.content,
+                            };
+                    }
+                }),
+                {
+                    role: 'user',
+                    name: inputMessageItem.username,
+                    content: inputMessageItem.content,
+                },
+            );
 
-            return `${initialPrompt}${debug ? '\nDEBUG: ALL MESSAGES:' : ''}
-${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\n')}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
+            return result;
         }
 
         const tokensForRecentMessages = Math.min(config.maxTokensForRecentMessages, availableTokens);
@@ -1467,16 +1444,52 @@ ${allMessagesInHistory.concat(inputMessageItem).map(messageToPromptPart).join('\
             relevantSuffix = 'Recent history:';
         }
 
-        const latestMessagesAndCurrentPrompt = latestMessagesPlusNewMessage.map(messageToPromptPart).join('\n');
+        // const latestMessagesAndCurrentPrompt = latestMessagesPlusNewMessage.map(messageToPromptPart).join('\n');
 
-        return `${initialPrompt}
-${includedRelevantMessages.length > 0 ? `${relevantPrefix}
-${includedRelevantMessages.map(item => messageToPromptPart(item.message)).join('\n')}
-${includedRelevantMessages.length > 0 ? relevantSuffix : ''}
-` : ''}
-${latestMessagesAndCurrentPrompt}${debug ? `
----LATEST LENGTH: ${encodeLength(latestMessagesAndCurrentPrompt)}---` : ''}
-[${messageFormattedDateTime(new Date())}] ${this.username}:${END_OF_PROMPT}${latestResponseText}`;
+        if (includedRelevantMessages.length > 0) {
+            result.push({
+                role: 'system',
+                content: 'Relevant messages below:',
+            });
+
+            result.push(...includedRelevantMessages.map((relevancy): ChatCompletionRequestMessage => {
+                    const item = relevancy.message;
+                    switch (item.type) {
+                        case "human":
+                            return {
+                                role: 'user',
+                                name: item.username,
+                                content: item.content,
+                            };
+                        case "response":
+                            return {
+                                role: 'assistant',
+                                content: item.content,
+                            };
+                    }
+                })
+            );
+        }
+
+
+        result.push(...latestMessagesPlusNewMessage.map((item): ChatCompletionRequestMessage => {
+                switch (item.type) {
+                    case "human":
+                        return {
+                            role: 'user',
+                            name: item.username,
+                            content: item.content,
+                        };
+                    case "response":
+                        return {
+                            role: 'assistant',
+                            content: item.content,
+                        };
+                }
+            })
+        );
+
+        return result;
     }
 
     private async getRelevantMessages(user: User, openai: OpenAIApi, orderWeight: number, vector: number[] | null):

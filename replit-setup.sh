@@ -10,4 +10,5 @@ corepack enable
 corepack prepare yarn@stable --activate
 
 yarn node --version
+yarn remove canvas
 yarn build && yarn start
