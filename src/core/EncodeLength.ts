@@ -14,7 +14,7 @@ export const ChatModelNames: ChatModelName[] = [
     'gpt-4-32k',
 ];
 
-export function numTokensFromMessages(messages: ChatCompletionRequestMessage[], model: ChatModelName = 'gpt-3.5-turbo-0301') {
+export function numTokensFromMessages(messages: ChatCompletionRequestMessage[], model: ChatModelName = 'gpt-3.5-turbo') {
     if (ChatModelNames.includes(model)) {
         let numTokens = 0;
         for (const message of messages) {

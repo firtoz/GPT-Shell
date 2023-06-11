@@ -72,11 +72,11 @@ async function generateFollowUp(configId: string, isDM: boolean, user: User) {
     const fields = [
         {
             name: 'Token limits:',
-            value: `Max tokens for prompt: ${config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS}.
+            value: `Max tokens for prompt: ${config.modelInfo['gpt-3.5-turbo'].MAX_ALLOWED_TOKENS}.
 
 Conversations start at less than a cent per message. As a conversation gets longer, the cost starts to rise as more and more tokens are used.
 
-With this configuration, each message can cost at most \$${(0.02 * config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS / 1000).toFixed(2)} USD.
+With this configuration, each message can cost at most \$${(0.02 * config.modelInfo['gpt-3.5-turbo'].MAX_ALLOWED_TOKENS / 1000).toFixed(2)} USD.
 
 Max tokens for recent messages: ${config.maxTokensForRecentMessages}.
 

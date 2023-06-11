@@ -36,7 +36,7 @@ export const TokenLimitsModal = defineModal(
 
         return {
             maxTokensForRecentMessages: `${config.maxTokensForRecentMessages || 0}`,
-            maxAllowedTokens: `${config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS || 0}`,
+            maxAllowedTokens: `${config.modelInfo['gpt-3.5-turbo'].MAX_ALLOWED_TOKENS || 0}`,
         };
     },
     async (values, submitInteraction) => {
@@ -56,7 +56,7 @@ export const TokenLimitsModal = defineModal(
 
             if (!isNaN(maxTokensForRecentMessagesValue) && !isNaN(maxAllowedTokensValue)) {
                 config.maxTokensForRecentMessages = maxTokensForRecentMessagesValue;
-                config.modelInfo['text-davinci-003'].MAX_ALLOWED_TOKENS = maxAllowedTokensValue;
+                config.modelInfo['gpt-3.5-turbo'].MAX_ALLOWED_TOKENS = maxAllowedTokensValue;
 
                 await setConfigForId(configId, config);
 
