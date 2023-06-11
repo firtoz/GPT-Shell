@@ -6,6 +6,7 @@
     "dev": "nodemon ./src/index.ts",
     "build": "yarn rimraf ./lib/ && yarn tsc && echo build complete",
     "start": "pm2 start ./lib/index.js --name GPT-Shell && pm2 save && pm2 logs",
+    "stop": "pm2 stop all",
     "start-replit": "yarn node ./lib/index.js",
     "test": "vitest run",
     "vitest": "vitest"

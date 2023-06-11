@@ -164,29 +164,29 @@ Set up the environment variables as described above.
 - Install pm2:
 
 With yarn:
-```
+```bash
 yarn global add pm2
 ```
 With npm:
-```
+```bash
 npm install pm2 -g
 ```
 With debian, use the install script:
-```
+```bash
 apt update && apt install sudo curl && curl -sL https://raw.githubusercontent.com/Unitech/pm2/master/packager/setup.deb.sh | sudo -E bash -
 ```
 - Then to start a development environment, run 
-```
+```bash
 yarn dev
 ```
 This way, whenever you change the code, it will restart the bot to update.
 
 - To build and start the bot, run 
-```
+```bash
 yarn build
 ``` 
 and then 
-```
+```bash
 yarn start
 ```
 You can also run `npm start` or `npm run start` to start the bot.
@@ -194,12 +194,16 @@ You can also run `npm start` or `npm run start` to start the bot.
 NOTE: running `yarn start`, `npm start` or `npm run start` will start the bot with PM2 and give it the name "GPT-Shell". You can replace "GPT-Shell" with a name of your choice in [package.json](https://github.com/firtoz/GPT-Shell/blob/main/package.json). It will also show logs for the PM2 running processes and save them.
 
 If you are in dev environment, use `node .` to test your code:
-```
+```bash
 node .
 ```
 Once you are satisfied with the changes run:
-```
+```bash
 pm2 restart GPT-Shell && pm2 logs
+```
+In order to stop the bot, run:
+```bash
+yarn run stop
 ```
 You can also restart it from the [pm2.io dashboard](https://pm2.io/) as shown bellow:
 <details>
