@@ -1354,7 +1354,7 @@ ${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
                         case "human":
                             return {
                                 role: 'user',
-                                name: item.username,
+                                name: this.filterUsername(item.username),
                                 content: item.content,
                             };
                         case "response":
@@ -1366,7 +1366,7 @@ ${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
                 }),
                 {
                     role: 'user',
-                    name: inputMessageItem.username,
+                    name: this.filterUsername(inputMessageItem.username),
                     content: inputMessageItem.content,
                 },
             );
@@ -1470,7 +1470,7 @@ ${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
                         case "human":
                             return {
                                 role: 'user',
-                                name: item.username,
+                                name: this.filterUsername(item.username),
                                 content: item.content,
                             };
                         case "response":
@@ -1489,7 +1489,7 @@ ${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
                     case "human":
                         return {
                             role: 'user',
-                            name: item.username,
+                            name: this.filterUsername(item.username),
                             content: item.content,
                         };
                     case "response":
@@ -1606,6 +1606,10 @@ ${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
 
     public sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
         return new MultiMessage(channel, undefined, messageToReplyTo).update(message, true);
+    }
+
+    private filterUsername(username: string): string {
+        return username.replace(/[^a-zA-Z0-9_-]+/g,'').substring(0,64)
     }
 
     private async getDebugName(user: User) {
