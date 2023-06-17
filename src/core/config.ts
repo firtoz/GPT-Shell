@@ -79,7 +79,7 @@ export type ConfigForIdType = {
 const defaultConfigForId: ConfigForIdType = {
     maxTokensForRecentMessages: 1000,
     modelInfo: {
-        ['text-davinci-003']: {
+        ['gpt-3.5-turbo']: {
             MAX_ALLOWED_TOKENS: 2000,
             MAX_TOKENS_PER_RESPONSE: 512,
         },

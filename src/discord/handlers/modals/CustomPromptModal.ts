@@ -99,7 +99,7 @@ export const CustomPromptModal = defineModal(
                     submitInteraction.user.id,
                     submitInteraction.guildId ?? '',
                     values.customUsername ?? discordClient.user!.username,
-                    'text-davinci-003'
+                    'gpt-3.5-turbo'
                 );
 
                 if (channel.isDMBased()) {

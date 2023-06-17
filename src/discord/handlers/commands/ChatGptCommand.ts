@@ -224,7 +224,7 @@ export const ChatGptCommand: Command = {
     type: ApplicationCommandType.ChatInput,
     options,
     run: async (client: Client, interaction: CommandInteraction) => {
-        const model = 'text-davinci-003';
+        const model = 'gpt-3.5-turbo';
         await handleChat(interaction, client, model);
     }
 };
@@ -237,7 +237,7 @@ export const PrivateChatGptCommand: Command | null = PRIVATE_COMMAND_NAME ? {
     type: ApplicationCommandType.ChatInput,
     options,
     run: async (client: Client, interaction: CommandInteraction) => {
-        const model = 'text-davinci-003';
+        const model = 'gpt-3.5-turbo';
         await handleChat(interaction, client, model, true);
     }
 } : null;

@@ -10,4 +10,4 @@ corepack enable
 corepack prepare yarn@stable --activate
 
 yarn node --version
-yarn build && yarn start
+yarn build && yarn run start-replit

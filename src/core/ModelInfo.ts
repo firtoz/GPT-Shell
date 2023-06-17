@@ -1,1 +1,1 @@
-export type ModelName = 'text-davinci-003'
+export type ModelName = 'gpt-3.5-turbo'

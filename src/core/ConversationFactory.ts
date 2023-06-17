@@ -46,7 +46,7 @@ export class ConversationFactory {
                 message.author.id,
                 message.guildId ?? '',
                 discordClient.user!.username,
-                'text-davinci-003'
+                'gpt-3.5-turbo'
             );
 
             if (channel.isDMBased()) {

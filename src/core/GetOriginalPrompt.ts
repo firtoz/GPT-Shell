@@ -13,30 +13,10 @@ You are helpful and descriptive.
 When asked to do something, do it and explain what you have done clearly.
 Follow orders.
 Repeat if asked.
-Mention dates and times in simple words.
-
-The conversations are in this format:
-
-[datetime] [username]: [MESSAGE 1]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 1]
-[datetime] [username]: [MESSAGE 2]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2]
-
-Generate only one response per prompt.
-`;
+Mention dates and times in simple words.`;
 }
 
 
 export const getCustomPrompt = (botUsername: string, customPrompt: string) => {
-    return `Instructions for ${botUsername}: ${customPrompt}
-
-The conversations are in this format:
-
-[datetime] [username]: [MESSAGE 1]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 1]
-[datetime] [username]: [MESSAGE 2]
-[datetime] ${botUsername}:${END_OF_PROMPT} [RESPONSE TO MESSAGE 2]
-
-Generate only one response per prompt.
-`;
+    return `Instructions for ${botUsername}: ${customPrompt}`;
 }
