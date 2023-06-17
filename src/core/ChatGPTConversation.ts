@@ -4,7 +4,6 @@ import {
     AnyThreadChannel,
     ChannelType,
     EmbedBuilder,
-    EmbedType,
     Message,
     TextBasedChannel,
     ThreadAutoArchiveDuration,
@@ -13,7 +12,7 @@ import {
 import {logMessage, printArg} from "../utils/logMessage";
 import {
     ChatCompletionRequestMessage,
-    CreateCompletionResponse, CreateCompletionResponseUsage,
+    CreateCompletionResponseUsage,
     CreateEmbeddingResponse,
     CreateModerationResponse,
     CreateModerationResponseResultsInnerCategoryScores,
@@ -953,20 +952,21 @@ Thank you for your understanding.`),
             this.nextSummaryMessageCount = this.messageHistory.length + 10;
             await this.persist();
 
-            const response: AxiosResponse<CreateCompletionResponse> = await openai.createCompletion({
-                model: this.model,
-                prompt: `Please create a name for a discord thread that contains this conversation:
+            const response = await getChatCompletionSimple({
+                openai,
+                messages: this.getSummarisePrompt(lastMessages),
+                options: {
+                    model: 'gpt-3.5-turbo',
+                    temperature: this.temperature,
+                    max_tokens: 512,
+                    top_p: 0.9,
+                    frequency_penalty: 0,
+                    presence_penalty: 0,
+                    user: userId,
+                }
+            })
 
-${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`,
-                temperature: this.temperature,
-                max_tokens: 512,
-                top_p: 0.9,
-                frequency_penalty: 0,
-                presence_penalty: 0,
-                user: userId,
-            }) as any;
-
-            this.summary = response.data.choices[0].text!;
+            this.summary = response
 
             logMessage(`Summary for ${await this.getLinkableId()}: ${this.summary}.
 Source: ${lastMessages}`);
@@ -1290,6 +1290,18 @@ ${messageToPromptPart(item.message)}`;
         return;
     }
 
+    private getSummarisePrompt(lastMessages: MessageHistoryItem[]): ChatCompletionRequestMessage[] {
+        const result: ChatCompletionRequestMessage[] = [
+            {
+                role: 'system',
+                content: `Please create a name for a discord thread that contains this conversation:
+
+${lastMessages.map(item => messageToPromptPart(item)).join('\n')}`
+            }
+        ]
+        return result
+    }
+
     private async getFullPrompt(
         config: ConfigForIdType,
         openai: OpenAIApi,
@@ -1342,7 +1354,7 @@ ${messageToPromptPart(item.message)}`;
                         case "human":
                             return {
                                 role: 'user',
-                                name: item.username,
+                                name: this.filterUsername(item.username),
                                 content: item.content,
                             };
                         case "response":
@@ -1354,7 +1366,7 @@ ${messageToPromptPart(item.message)}`;
                 }),
                 {
                     role: 'user',
-                    name: inputMessageItem.username,
+                    name: this.filterUsername(inputMessageItem.username),
                     content: inputMessageItem.content,
                 },
             );
@@ -1458,7 +1470,7 @@ ${messageToPromptPart(item.message)}`;
                         case "human":
                             return {
                                 role: 'user',
-                                name: item.username,
+                                name: this.filterUsername(item.username),
                                 content: item.content,
                             };
                         case "response":
@@ -1477,7 +1489,7 @@ ${messageToPromptPart(item.message)}`;
                     case "human":
                         return {
                             role: 'user',
-                            name: item.username,
+                            name: this.filterUsername(item.username),
                             content: item.content,
                         };
                     case "response":
@@ -1594,6 +1606,10 @@ ${messageToPromptPart(item.message)}`;
 
     public sendReply(channel: TextBasedChannel, message: string, messageToReplyTo?: Message<boolean>) {
         return new MultiMessage(channel, undefined, messageToReplyTo).update(message, true);
+    }
+
+    private filterUsername(username: string): string {
+        return username.replace(/[^a-zA-Z0-9_-]+/g,'').substring(0,64)
     }
 
     private async getDebugName(user: User) {
