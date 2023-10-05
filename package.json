@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon ./src/index.ts",
     "build": "rimraf ./lib/ && tsc && echo build complete",
-    "start": "pm2 start ./lib/index.js --name GPT-Shell && pm2 save && pm2 logs",
+    "start": "pm2 start ./lib/index.js --name mochiGPT && pm2 save && pm2 logs",
     "stop": "pm2 stop all",
     "start-replit": "node ./lib/index.js",
     "test": "vitest run",
